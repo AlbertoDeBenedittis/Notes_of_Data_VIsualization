@@ -1,0 +1,21 @@
+Region,Capital,Pop (ab),Area (km²),Density (ab./km²),Provinces,Admin divisions
+Lombardia,Milano,10 103 969,23 864,423,"Bergamo, Brescia, Como, Cremona, Lecco, Lodi, Mantova, Milano, Monza e Brianza, Pavia, Sondrio, Varese",1 506
+Lazio,Roma,5 865 544,17 232,340,"Frosinone, Latina, Rieti, Roma, Viterbo",378
+Campania,Napoli,5 785 861,13 671,423,"Avellino, Benevento, Caserta, Napoli, Salerno",550
+Sicilia,Palermo,4 968 410,25 832,192,"Agrigento, Caltanissetta, Catania, Enna, Messina, Palermo, Ragusa, Siracusa, Trapani",390
+Veneto,Venezia,4 907 704,18 345,268,"Belluno, Padova, Rovigo, Treviso, Venezia, Verona, Vicenza",563
+Emilia-Romagna,Bologna,4 467 118,22 453,199,"Bologna, Ferrara, Forlì-Cesena, Modena, Parma, Piacenza, Ravenna, Reggio Emilia, Rimini",328
+Piemonte,Torino,4 341 375,25 387,171,"Alessandria, Asti, Biella, Cuneo, Novara, Torino, Verbano-Cusio-Ossola, Vercelli",1 181
+Puglia,Bari,4 008 296,19 541,205,"Bari, Barletta-Andria-Trani, Brindisi, Foggia, Lecce, Taranto",257
+Toscana,Firenze,3 722 729,22 987,162,"Arezzo, Firenze, Grosseto, Livorno, Lucca, Massa e Carrara, Pisa, Pistoia, Prato, Siena",273
+Calabria,Catanzaro,1 924 701,15 222,126,"Catanzaro, Cosenza, Crotone, Reggio Calabria, Vibo Valentia",404
+Sardegna,Cagliari,1 630 474,24 100,68,"Cagliari, Nuoro, Oristano, Sassari, Sud Sardegna",377
+Liguria,Genova,1 543 127,5 416,285,"Genova, Imperia, La Spezia, Savona",234
+Marche,Ancona,1 518 400,9 401,162,"Ancona, Ascoli Piceno, Fermo, Macerata, Pesaro e Urbino",227
+Abruzzo,L'Aquila,1 305 770,10 832,121,"Chieti, L'Aquila, Pescara, Teramo",305
+Friuli-Venezia Giulia,Trieste,1 211 357,7 924,153,"Pordenone, Udine, Gorizia, Trieste",215
+Trentino-Alto Adige,Trento,1 074 819,13 605,79,"Bolzano, Trento",282
+Umbria,Perugia,880 285,8 464,104,"Perugia, Terni",92
+Basilicata,Potenza,556 934,10 073,55,"Matera, Potenza",131
+Molise,Campobasso,302 265,4 461,68,"Campobasso, Isernia",136
+Valle d'Aosta,Aosta,125 501,3 261,38,Nessuna,74
