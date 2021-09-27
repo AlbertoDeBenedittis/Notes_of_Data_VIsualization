@@ -1,0 +1,2210 @@
+---
+title: 'ggplot2: quick (and partial) summary'
+author: "Giuseppe Jurman"
+date: "March, 15th 2021"
+output:
+  html_notebook:
+    number_sections: yes
+  pdf_document: default
+---
+
+(partially abridged from [r.statistics.co](http://r-statistics.co),  [GGANIMATE: HOW TO CREATE PLOTS WITH BEAUTIFUL ANIMATION IN R](https://www.datanovia.com/en/blog/gganimate-how-to-create-plots-with-beautiful-animation-in-r/) and [The R Graph Gallery](https://www.r-graph-gallery.com/109-ggplotly-makes-any-ggplot2-graph-interactive/))
+
+# Intro
+
+[*ggplot2*](https://en.wikipedia.org/wiki/Ggplot2) is a data visualization package for the statistical programming language R. Created by [Hadley Wickham](https://vita.had.co.nz/papers/layered-grammar.pdf) in 2005, *ggplot2* is an implementation of Leland Wilkinson's [Grammar of Graphics](https://www.springer.com/it/book/9780387245447) — a general scheme for data visualization which breaks up graphs into semantic components such as scales and layers. 
+*ggplot2* can serve as a replacement for the base graphics in R and contains a number of defaults for web and print display of common scales. 
+Since 2005, *ggplot2* has grown in use to become one of the most popular R packages. It is licensed under GNU GPL v2.
+
+Nowadays *ggplot2* is acknowledged as the most elegant and aesthetically pleasing graphics framework available in R.
+
+In contrast to base R graphics, *ggplot2* allows the user to add, remove or alter components in a plot at a high level of abstraction.
+This abstraction comes at a cost, with *ggplot2* being slower than *lattice* graphics.
+
+One potential limitation of base R graphics is the "pen-and-paper model" utilized to populate the plotting device.
+Graphical output from the interpreter is added directly to the plotting device or window rather than separately for each distinct element of a plot.
+In this respect it is similar to the *lattice* package, though Wickham argues *ggplot2* inherits a more formal model of graphics from Wilkinson.
+As such, it allows for a high degree of modularity; the same underlying data can be transformed by many different scales or layers.
+
+*ggplot2* is usually loaded into R through [*tidyverse*](https://www.tidyverse.org/), a collection of R packages introduced by Hadley Wickham that *share an underlying design philosophy, grammar, and data structures* of tidy data.
+The core packages are *ggplot2, dplyr, tidyr, readr, purrr, tibble, stringr*, and *forcats*, which provide functionality to model, transform, and visualize data.
+As of March 2021, the tidyverse package and some of its individual packages make up 5 out of the top 10 most downloaded R packages, and are the subject of multiple books and papers.
+
+Moreover, a number of packages extending *ggplot2* functionalities have appeared: among them, [*ggforce*](https://cran.r-project.org/web/packages/ggforce/vignettes/Visual_Guide.html) is one of the most relevant.
+
+Let's start loading the libraries
+```{r}
+library(tidyverse)
+```
+
+## Understanding the *ggplot* Syntax
+The syntax for constructing ggplots could be puzzling if you are a beginner or work primarily with base graphics. The main difference is that, unlike base graphics, ggplot works with dataframes and not individual vectors. All the data needed to make the plot is typically be contained within the dataframe supplied to the ggplot() itself or can be supplied to respective geoms. More on that later.
+
+The second noticeable feature is that you can keep enhancing the plot by adding more layers (and themes) to an existing plot created using the *ggplot()* function.
+Let’s initialize a basic ggplot based on the *midwest* dataset.
+
+```{r}
+# Setup
+options(scipen=999)  # turn off scientific notation like 1e+06
+data("midwest", package = "ggplot2")  # load the data
+# midwest <- read.csv("http://goo.gl/G1K41K") # alt source 
+
+# Init Ggplot
+ggplot(midwest, aes(x=area, y=poptotal))  # area and poptotal are columns in 'midwest'
+```
+
+A blank ggplot is drawn. Even though the x and y are specified, there are no points or lines in it. 
+This is because ggplot doesn’t assume that you meant a scatterplot or a line chart to be drawn. 
+I have only told ggplot what dataset to use and what columns should be used for X and Y axis. 
+I haven’t explicitly asked it to draw any points.
+
+Also note that *aes()* function is used to specify the X and Y axes. That’s because any information that is part of the source dataframe has to be specified inside the *aes()* function.
+
+## How to Make a Simple Scatterplot
+Let’s make a scatterplot on top of the blank ggplot by adding points using a geom layer called *geom_point*.
+
+```{r}
+ggplot(midwest, aes(x=area, y=poptotal)) + geom_point()
+```
+
+We got a basic scatterplot, where each point represents a county. 
+However, it lacks some basic components such as the plot title, meaningful axis labels etc. 
+Moreover most of the points are concentrated on the bottom portion of the plot, which is not so nice. 
+You will see how to rectify these in upcoming steps.
+
+Like *geom_point()*, there are many such geom layers which we will see in a subsequent part in this tutorial series. 
+For now, let’s just add a smoothing layer using *geom_smooth(method='lm')*. 
+Since the method is set as *lm* (short for linear model), it draws the line of best fit.
+
+```{r}
+g <- ggplot(midwest, aes(x=area, y=poptotal)) + geom_point() + geom_smooth(method="lm")  # set se=FALSE to turnoff confidence bands
+plot(g)
+```
+
+The line of best fit is in blue. 
+Can you find out what other method options are available for *geom_smooth*? (note: see *?geom_smooth*). You might have noticed that majority of points lie in the bottom of the chart which doesn’t really look nice. 
+
+So, let’s change the Y-axis limits to focus on the lower half.
+
+## Adjusting the X and Y axis limits
+The X and Y axis limits can be controlled in 2 ways.
+
+### Method A: By deleting the points outside the range
+This will change the lines of best fit or smoothing lines as compared to the original data.
+
+This can be done by *xlim()* and *ylim()*. You can pass a numeric vector of length 2 (with max and min values) or just the max and min values itself.
+
+```{r}
+g <- ggplot(midwest, aes(x=area, y=poptotal)) + geom_point() + geom_smooth(method="lm")  # set se=FALSE to turnoff confidence bands
+
+# Delete the points outside the limits
+g + xlim(c(0, 0.1)) + ylim(c(0, 1000000))   # deletes points
+# g + xlim(0, 0.1) + ylim(0, 1000000)   # deletes points
+```
+
+In this case, the chart was not built from scratch but rather was built on top of g. 
+This is becaus the previous plot was stored as *g*, a ggplot object, which when called will reproduce the original plot. 
+Using ggplot, you can add more layers, themes and other settings on top of this plot.
+
+Did you notice that the line of best fit became more horizontal compared to the original plot? 
+This is because, when using *xlim()* and *ylim()*, the points outside the specified range are deleted and will not be considered while drawing the line of best fit (using *geom_smooth(method='lm')*). 
+This feature might come in handy when you wish to know how the line of best fit would change when some extreme values (or outliers) are removed.
+
+### Method B: Zooming In
+The other method is to change the X and Y axis limits by zooming in to the region of interest without deleting the points. This is done using *coord_cartesian()*.
+
+Let’s store this plot as *g1*.
+
+```{r}
+g <- ggplot(midwest, aes(x=area, y=poptotal)) + geom_point() + geom_smooth(method="lm")  # set se=FALSE to turnoff confidence bands
+
+# Zoom in without deleting the points outside the limits. 
+# As a result, the line of best fit is the same as the original plot.
+g1 <- g + coord_cartesian(xlim=c(0,0.1), ylim=c(0, 1000000))  # zooms in
+plot(g1)
+```
+
+Since all points were considered, the line of best fit did not change.
+
+## How to Change the Title and Axis Labels
+I have stored this as *g1*. 
+Let’s add the plot title and labels for X and Y axis. 
+This can be done in one go using the *labs()* function with title, x and y arguments. 
+Another option is to use the *ggtitle()*, *xlab()* and *ylab()*.
+
+```{r}
+g <- ggplot(midwest, aes(x=area, y=poptotal)) + geom_point() + geom_smooth(method="lm")  # set se=FALSE to turnoff confidence bands
+
+g1 <- g + coord_cartesian(xlim=c(0,0.1), ylim=c(0, 1000000))  # zooms in
+
+# Add Title and Labels
+g1 + labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+
+# or
+
+g1 + ggtitle("Area Vs Population", subtitle="From midwest dataset") + xlab("Area") + ylab("Population")
+```
+
+Excellent! So here is the full function call.
+
+## How to Change the Color and Size of Points
+We can change the aesthetics of a geom layer by modifying the respective geoms. 
+Let’s change the color of the points and the line to a static value.
+
+```{r}
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(col="steelblue", size=3) +   # Set static color and size for points
+  geom_smooth(method="lm", col="firebrick") +  # change the color of line
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+```
+
+
+Suppose now we want the color to change based on another column in the source dataset (*midwest*): then it must be specified inside the *aes()* function.
+
+```{r}
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state), size=3) +  # Set color to vary based on state categories.
+  geom_smooth(method="lm", col="firebrick", size=2) + 
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+plot(gg)
+```
+
+
+Now each point is colored based on the state it belongs because of aes(col=state)*. 
+Not just color, but size, shape, stroke (thickness of boundary) and fill (fill color) can be used to discriminate groupings.
+
+As an added benefit, the legend is added automatically. If needed, it can be removed by setting the *legend.position* to *None* from within a *theme()* function.
+
+```{r}
+gg + theme(legend.position="None")  # remove legend
+```
+
+Also, You can change the color palette entirely.
+
+```{r}
+gg + scale_colour_brewer(palette = "Set1")  # change color palette
+```
+More of such palettes can be found in the *RColorBrewer* package
+
+```{r}
+library(RColorBrewer)
+head(brewer.pal.info, 10)  # show 10 palettes
+```
+
+![](http://r-statistics.co/screenshots/color_palettes.png)
+
+## How to Change the X Axis Texts and Ticks Location
+Now let’s see how to change the X and Y axis text and its location. This involves two aspects: *breaks* and *labels*.
+
+### Set the breaks
+The breaks should be of the same scale as the X axis variable. 
+Note that I am using *scale_x_continuous* because, the X axis variable is a continuous variable. 
+Had it been a date variable, *scale_x_date* could be used. 
+Like *scale_x_continuous()* an equivalent *scale_y_continuous()* is available for Y axis.
+
+```{r}
+# Base plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state), size=3) +  # Set color to vary based on state categories.
+  geom_smooth(method="lm", col="firebrick", size=2) + 
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+
+# Change breaks
+gg + scale_x_continuous(breaks=seq(0, 0.1, 0.01))
+```
+
+### Change the labels
+You can optionally change the labels at the axis ticks. *labels* take a vector of the same length as breaks.
+Let me demonstrate by setting the labels to alphabets from a to k (though there is no meaning to it in this context).
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state), size=3) +  # Set color to vary based on state categories.
+  geom_smooth(method="lm", col="firebrick", size=2) + 
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+
+# Change breaks + label
+gg + scale_x_continuous(breaks=seq(0, 0.1, 0.01), labels = letters[1:11])
+```
+
+## How to Write Customized Texts for Axis Labels, by Formatting the Original Values?
+Let’s set the breaks for Y axis text as well and format the X and Y axis labels. I have used 2 methods for formatting labels:
+
+* Method 1: Using *sprintf()* -- Have formatted it as % in below example 
+* Method 2: Using a custom user defined function. (Formatted 1000’s to 1K scale)
+
+Use whichever method feels convenient.
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state), size=3) +  # Set color to vary based on state categories.
+  geom_smooth(method="lm", col="firebrick", size=2) + 
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+
+# Change Axis Texts
+gg + scale_x_continuous(breaks=seq(0, 0.1, 0.01), labels = sprintf("%1.2f%%", seq(0, 0.1, 0.01))) + 
+  scale_y_continuous(breaks=seq(0, 1000000, 200000), labels = function(x){paste0(x/1000, 'K')})
+```
+
+## How to Customize the Entire Theme in One Shot using Pre-Built Themes?
+Finally, instead of changing the theme components individually (which I discuss in detail in part 2), we can change the entire theme itself using pre-built themes. 
+The help page *?theme_bw* shows all the available built-in themes.
+
+This again is commonly done in couple of ways. 
+
+* Use the *theme_set()* to set the theme before drawing the *ggplot*. Note that this setting will affect all future plots. 
+* Draw the *ggplot* and then add the overall theme setting (eg. *theme_bw()*)
+
+```{r}
+# Base plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state), size=3) +  # Set color to vary based on state categories.
+  geom_smooth(method="lm", col="firebrick", size=2) + 
+  coord_cartesian(xlim=c(0, 0.1), ylim=c(0, 1000000)) + 
+  labs(title="Area Vs Population", subtitle="From midwest dataset", y="Population", x="Area", caption="Midwest Demographics")
+
+gg <- gg + scale_x_continuous(breaks=seq(0, 0.1, 0.01))
+
+# method 1: Using theme_set()
+theme_set(theme_classic())  # not run
+gg
+
+# method 2: Adding theme Layer itself.
+gg + theme_bw() + labs(subtitle="BW Theme")
+gg + theme_classic() + labs(subtitle="Classic Theme")
+```
+
+For more customized and fancy themes have a look at the *ggthemes* package and the *ggthemr* package.
+
+# Customizing the look and feel
+Let’s begin with a *scatterplot* of *Population* against *Area* from *midwest* dataset. 
+The point’s color and size vary based on *state* (categorical) and *popdensity* (continuous) columns respectively. 
+The below plot has the essential components such as the title, axis labels and legend setup nicely. But how to modify the looks?
+
+Most of the requirements related to look and feel can be achieved using the *theme()* function, which accepts a large number of arguments. Type *?theme* in the R console and see for yourself.
+
+```{r}
+theme_set(theme_bw())
+# midwest <- read.csv("http://goo.gl/G1K41K")  # bkup data source
+
+# Add plot components --------------------------------
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# Call plot ------------------------------------------
+plot(gg)
+```
+
+The arguments passed to *theme()* components require to be set using special *element_type()* functions. They are of 4 major types.
+
+1. *element_text()*: Since the title, subtitle and captions are textual items, *element_text()* function is used to set it.
+2. *element_line()*: Likewise *element_line()* is use to modify line based components such as the axis lines, major and minor grid lines, etc.
+3. ele*ment_rect()*: Modifies rectangle components such as plot and panel background.
+4. *element_blank()*: Turns off displaying the theme item.
+
+More on this follows in upcoming discussion.
+
+Let’s discuss a number of tasks related to changing the plot output, starting with modifying the title and axis texts.
+
+## Adding Plot and Axis Titles
+Plot and axis titles and the axis text are part of the plot’s theme. 
+Therefore, it can be modified using the *theme()* function. The *theme()* function accepts one of the four *element_type()* functions mentioned above as arguments. Since the plot and axis titles are textual components, *element_text()* is used to modify them.
+
+Below, I have changed the size, color, face and line-height. The axis text can be rotated by changing the angle.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# Modify theme components -------------------------------------------
+gg + theme(plot.title=element_text(size=20, 
+                                    face="bold", 
+                                    family="American Typewriter",
+                                    color="tomato",
+                                    hjust=0.5,
+                                    lineheight=1.2),  # title
+            plot.subtitle=element_text(size=15, 
+                                       family="American Typewriter",
+                                       face="bold",
+                                       hjust=0.5),  # subtitle
+            plot.caption=element_text(size=15),  # caption
+            axis.title.x=element_text(vjust=0,  
+                                      size=15),  # X axis title
+            axis.title.y=element_text(size=15),  # Y axis title
+            axis.text.x=element_text(size=10, 
+                                     angle = 30,
+                                     vjust=.5),  # X axis text
+            axis.text.y=element_text(size=10))  # Y axis text
+```
+
+
+* *vjust*, controls the vertical spacing between title (or label) and plot.
+* *hjust*, controls the horizontal spacing. Setting it to 0.5 centers the title.
+* *family*, is used to set a new font
+* *face*, sets the font face (“plain”, “*italic*”, “***bold**”, “*bold.italic*”)
+
+Above example covers some of the frequently used theme modifications and the actual list is too long. So *?theme* is the first place you want to look at if you want to change the look and feel of any component.
+
+## Modifying Legend
+Whenever your plot’s geom (like points, lines, bars, etc) is set to change the aesthetics (fill, size, col, shape or stroke) based on another column, as in *geom_point(aes(col=state, size=popdensity))*, a legend is automatically drawn.
+
+If you are creating a geom where the aesthetics are static, a legend is not drawn by default. In such cases you might want to create your own legend manually. The below examples are for cases where you have the legend created automatically.
+
+### How to Change the Legend Title
+Let’s now change the legend title. We have two legends, one each for color and size. The size is based on a continuous variable while the color is based on a categorical(discrete) variable.
+
+There are 3 ways to change the legend title.
+
+1. Using *labs()*
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+gg + labs(color="State", size="Density")  # modify legend title
+```
+2. Using *guides()*
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+gg <- gg + guides(color=guide_legend("State"), size=guide_legend("Density"))  # modify legend title
+plot(gg)
+```
+
+3. Using *scale_aesthetic_vartype()* format
+
+The format of *scale_aestheic_vartype()* allows you to turn off legend for one particular aesthetic, leaving the rest in place. This can be done just by *setting guide=FALSE*. For example, if the legend is for size of points based on a continuous variable, then *scale_size_continuous()* would be the right function to use.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# Modify Legend
+gg + scale_color_discrete(name="State") + scale_size_continuous(name = "Density", guide = FALSE)  # turn off legend for size
+```
+
+### How to Change Legend Labels and Point Colors for Categories
+This can be done using the respective *scale_aesthetic_manual()* function. 
+The new legend labels are supplied as a character vector to the labels argument. 
+If you want to change the color of the categories, it can be assigned to the values argument as shown in below example.
+
+```{r}
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+gg + scale_color_manual(name="State", 
+                        labels = c("Illinois", 
+                                   "Indiana", 
+                                   "Michigan", 
+                                   "Ohio", 
+                                   "Wisconsin"), 
+                        values = c("IL"="blue", 
+                                   "IN"="red", 
+                                   "MI"="green", 
+                                   "OH"="brown", 
+                                   "WI"="orange"))
+```
+
+### Change the Order of Legend
+In case you want to show the legend for color (*State*) before size (*Density*), it can be done with the *guides()* function. 
+The order of the legend has to be set as desired.
+
+If you want to change the position of the labels inside the legend, set it in the required order as seen in previous example.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+gg + guides(colour = guide_legend(order = 1),
+            size = guide_legend(order = 2))
+```
+
+### How to Style the Legend Title, Text and Key
+The styling of legend title, text, key and the guide can also be adjusted. 
+The legend’s key is a figure like element, so it has to be set using *element_rect()* function.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+gg + theme(legend.title = element_text(size=12, color = "firebrick"), 
+           legend.text = element_text(size=10),
+           legend.key=element_rect(fill='springgreen')) + 
+  guides(colour = guide_legend(override.aes = list(size=2, stroke=1.5))) 
+```
+
+### How to Remove the Legend and Change Legend Positions
+The legend’s position inside the plot is an aspect of the theme. 
+So it can be modified using the *theme()* function. 
+If you want to place the legend inside the plot, you can additionally control the hinge point of the legend using *legend.justification*.
+
+The *legend.position* is the x and y axis position in chart area, where (0,0) is bottom left of the chart and (1,1) is top right. 
+Likewise, *legend.justification* refers to the hinge point inside the legend.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# No legend --------------------------------------------------
+gg + theme(legend.position="None") + labs(subtitle="No Legend")
+
+# Legend to the left -----------------------------------------
+gg + theme(legend.position="left") + labs(subtitle="Legend on the Left")
+
+# legend at the bottom and horizontal ------------------------
+gg + theme(legend.position="bottom", legend.box = "horizontal") + labs(subtitle="Legend at Bottom")
+
+# legend at bottom-right, inside the plot --------------------
+gg + theme(legend.title = element_text(size=12, color = "salmon", face="bold"),
+           legend.justification=c(1,0), 
+           legend.position=c(0.95, 0.05),  
+           legend.background = element_blank(),
+           legend.key = element_blank()) + 
+  labs(subtitle="Legend: Bottom-Right Inside the Plot")
+
+# legend at top-left, inside the plot -------------------------
+gg + theme(legend.title = element_text(size=12, color = "salmon", face="bold"),
+           legend.justification=c(0,1), 
+           legend.position=c(0.05, 0.95),
+           legend.background = element_blank(),
+           legend.key = element_blank()) + 
+  labs(subtitle="Legend: Top-Left Inside the Plot")
+```
+
+
+## Adding Text, Label and Annotation
+Let’s try adding some text. We will add text to only those counties that have population greater than 400K. In order to achieve this, I create another subsetted dataframe (*midwest_sub*) that contains only the counties that qualifies the said condition.
+
+Then, draw the *geom_text* and *geom_label* with this new dataframe as the data source. 
+This will ensure that labels (*geom_label*) are added only for the points contained in the new dataframe.
+```{r}
+# Filter required rows.
+midwest_sub <- midwest[midwest$poptotal > 300000, ]
+midwest_sub$large_county <- ifelse(midwest_sub$poptotal > 300000, midwest_sub$county, "")
+
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# Plot text and label ------------------------------------------------------
+gg + geom_text(aes(label=large_county), size=2, data=midwest_sub) + labs(subtitle="With ggplot2::geom_text") + theme(legend.position = "None")   # text
+
+gg + geom_label(aes(label=large_county), size=2, data=midwest_sub, alpha=0.25) + labs(subtitle="With ggplot2::geom_label") + theme(legend.position = "None")  # label
+
+# Plot text and label that REPELS eachother (using ggrepel pkg) ------------
+library(ggrepel)
+gg + geom_text_repel(aes(label=large_county), size=2, data=midwest_sub) + labs(subtitle="With ggrepel::geom_text_repel") + theme(legend.position = "None")   # text
+
+gg + geom_label_repel(aes(label=large_county), size=2, data=midwest_sub) + labs(subtitle="With ggrepel::geom_label_repel") + theme(legend.position = "None")   # label
+```
+
+Since the label is looked up from a different dataframe, we need to set the data argument.
+
+### How to Add Annotations Anywhere inside Plot
+Let’s see how to add annotation to any specific point of the chart. 
+It can be done with the *annotation_custom()* function which takes in a *grob* (grid graphica object) as the argument. 
+So, let’s create a grob the holds the text you want to display using the grid package.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest")
+
+# Define and add annotation -------------------------------------
+library(grid)
+my_text <- "This text is at x=0.7 and y=0.8!"
+my_grob = grid.text(my_text, x=0.7,  y=0.8, gp=gpar(col="firebrick", fontsize=14, fontface="bold"))
+gg + annotation_custom(my_grob)
+```
+
+## Flipping and Reversing X and Y Axis
+### How to flip the X and Y axis?
+Just add *coord_flip()*.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest", subtitle="X and Y axis Flipped") + theme(legend.position = "None")
+
+# Flip the X and Y axis -------------------------------------------------
+gg + coord_flip()
+```
+### How to reverse the scale of an axis?
+This is quite simple. Use *scale_x_reverse()* for X axis and *scale_y_reverse()* for Y axis.
+
+```{r}
+# Base Plot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + xlim(c(0, 0.1)) + ylim(c(0, 500000)) + 
+  labs(title="Area Vs Population", y="Population", x="Area", caption="Source: midwest", subtitle="Axis Scales Reversed") + theme(legend.position = "None")
+
+# Reverse the X and Y Axis ---------------------------
+gg + scale_x_reverse() + scale_y_reverse()
+```
+
+## Faceting: Draw multiple plots within one figure
+Let’s use the *mpg* dataset for this one. 
+It is available in the *ggplot2* package, or you can import it from [this link](http://goo.gl/uEeRGu).
+
+```{r}
+data(mpg, package="ggplot2")  # load data
+# mpg <- read.csv("http://goo.gl/uEeRGu")  # alt data source
+
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      labs(title="hwy vs displ", caption = "Source: mpg") +
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+plot(g)
+```
+
+We have a simple chart of highway mileage (*hwy*) against the engine displacement (*displ*) for the whole dataset. But what if you want to study how this relationship varies for different classes of vehicles?
+
+### Facet Wrap
+The *facet_wrap()* is used to break down a large plot into multiple small plots for individual categories. It takes a formula as the main argument. The items to the left of ~ forms the rows while those to the right form the columns.
+
+By default, all the plots share the same scale in both X and Y axis. You can set them free by setting *scales='free'* but this way it could be harder to compare between groups.
+
+```{r}
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+
+# Facet wrap with common scales
+g + facet_wrap( ~ class, nrow=3) + labs(title="hwy vs displ", caption = "Source: mpg", subtitle="Ggplot2 - Faceting - Multiple plots in one figure")  # Shared scales
+
+# Facet wrap with free scales
+g + facet_wrap( ~ class, scales = "free") + labs(title="hwy vs displ", caption = "Source: mpg", subtitle="Ggplot2 - Faceting - Multiple plots in one figure with free scales")  # Scales free
+```
+
+So, What do you infer from this? For one, most 2 seater cars have higher engine displacement while the minivan and compact vehicles are on the lower side. This is evident from where the points are placed along the X-axis.
+
+Also, the highway mileage drops across all segments as the engine displacement increases. This drop seems more pronounced in compact and subcompact vehicles.
+
+### Facet Grid
+The headings of the middle and bottom rows take up significant space. The *facet_grid()* would get rid of it and give more area to the charts. The main difference with *facet_grid* is that it is not possible to choose the number of rows and columns in the grid.
+
+Let’s create a grid to see how it varies with manufacturer.
+
+```{r}
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      labs(title="hwy vs displ", caption = "Source: mpg", subtitle="Ggplot2 - Faceting - Multiple plots in one figure") +
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+
+# Add Facet Grid
+g1 <- g + facet_grid(manufacturer ~ class)  # manufacturer in rows and class in columns
+plot(g1)
+```
+
+
+Let’s make one more to vary by cylinder.
+
+```{r}
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      geom_smooth(method="lm", se=FALSE) + 
+      labs(title="hwy vs displ", caption = "Source: mpg", subtitle="Ggplot2 - Facet Grid - Multiple plots in one figure") +
+      theme_bw()  # apply bw theme
+
+# Add Facet Grid
+g2 <- g + facet_grid(cyl ~ class)  # cyl in rows and class in columns.
+plot(g2)
+```
+
+
+It is possible to layout both these charts in the sample panel. I prefer the *gridExtra()* package for this.
+
+```{r}
+# Draw Multiple plots in same figure.
+library(gridExtra)
+gridExtra::grid.arrange(g1, g2, ncol=2)
+```
+
+
+## Modifying Plot Background, Major and Minor Axis
+### How to Change Plot background
+
+```{r}
+
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+
+# Change Plot Background elements -----------------------------------
+g + theme(panel.background = element_rect(fill = 'khaki'),
+          panel.grid.major = element_line(colour = "burlywood", size=1.5),
+          panel.grid.minor = element_line(colour = "tomato", 
+                                          size=.25, 
+                                          linetype = "dashed"),
+          panel.border = element_blank(),
+          axis.line.x = element_line(colour = "darkorange", 
+                                     size=1.5, 
+                                     lineend = "butt"),
+          axis.line.y = element_line(colour = "darkorange", 
+                                     size=1.5)) +
+    labs(title="Modified Background", 
+         subtitle="How to Change Major and Minor grid, Axis Lines, No Border")
+
+# Change Plot Margins -----------------------------------------------
+g + theme(plot.background=element_rect(fill="salmon"), 
+          plot.margin = unit(c(2, 2, 1, 1), "cm")) +  # top, right, bottom, left
+    labs(title="Modified Background", subtitle="How to Change Plot Margin")  
+```
+### How to Remove Major and Minor Grid, Change Border, Axis Title, Text and Ticks
+```{r}
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+
+g + theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.border = element_blank(),
+          axis.title = element_blank(), 
+          axis.text = element_blank(),
+          axis.ticks = element_blank()) +
+  labs(title="Modified Background", subtitle="How to remove major and minor axis grid, border, axis title, text and ticks") 
+```
+### Add an Image in Background
+```{r}
+
+library(grid)
+library(png)
+library(RCurl)
+
+img <- png::readPNG(getURLContent("https://upload.wikimedia.org/wikipedia/commons/c/c1/Rlogo.png"))  
+g_pic <- rasterGrob(img, interpolate=TRUE)
+
+# Base Plot
+g <- ggplot(mpg, aes(x=displ, y=hwy)) + 
+      geom_point() + 
+      geom_smooth(method="lm", se=FALSE) + 
+      theme_bw()  # apply bw theme
+
+g + theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          plot.title = element_text(size = rel(1.5), face = "bold"),
+          axis.ticks = element_blank()) + 
+  annotation_custom(g_pic, xmin=5, xmax=7, ymin=30, ymax=45)
+```
+
+
+# Top ggplot2 Visualizations - The Master List
+An effective chart is one that:
+
+1. Conveys the right information without distorting facts.
+2. Is simple but elegant. It should not force you to think much in order to get it.
+3. Aesthetics supports information rather that overshadow it.
+4. Is not overloaded with information.
+
+The list below sorts the visualizations based on its primary purpose. Primarily, there are 8 types of objectives you may construct plots. So, before you actually make the plot, try and figure what findings and relationships you would like to convey or examine through the visualization. Chances are it will fall under one (or sometimes more) of these 8 categories: Correlation, Deviation, Ranking, Distribution, Composition, Change, Groups and Spatial.
+
+## Correlation
+The following plots help to examine how well correlated two variables are.
+
+### Scatterplot
+The most frequently used plot for data analysis is undoubtedly the scatterplot. Whenever you want to understand the nature of relationship between two variables, invariably the first choice is the scatterplot.
+
+It can be drawn using *geom_point()*. Additionally, *geom_smooth* which draws a smoothing line (based on loess) by default, can be tweaked to draw the line of best fit by setting *method='lm'*.
+
+```{r}
+theme_set(theme_bw())  # pre-set the bw theme.
+data("midwest", package = "ggplot2")
+# midwest <- read.csv("http://goo.gl/G1K41K")  # bkup data source
+
+# Scatterplot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=F) + 
+  xlim(c(0, 0.1)) + 
+  ylim(c(0, 500000)) + 
+  labs(subtitle="Area Vs Population", 
+       y="Population", 
+       x="Area", 
+       title="Scatterplot", 
+       caption = "Source: midwest")
+
+plot(gg)
+```
+
+### Scatterplot With Encircling
+When presenting the results, sometimes I would encirlce certain special group of points or region in the chart so as to draw the attention to those peculiar cases. This can be conveniently done using the *geom_encircle()* in ggalt package.
+
+Within *geom_encircle()*, set the data to a new dataframe that contains only the points (rows) or interest. Moreover, You can expand the curve so as to pass just outside the points. The color and size (thickness) of the curve can be modified as well. 
+
+```{r}
+library(ggalt)
+midwest_select <- midwest[midwest$poptotal > 350000 & 
+                            midwest$poptotal <= 500000 & 
+                            midwest$area > 0.01 & 
+                            midwest$area < 0.1, ]
+
+# Plot
+ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) +   # draw points
+  geom_smooth(method="loess", se=F) + 
+  xlim(c(0, 0.1)) + 
+  ylim(c(0, 500000)) +   # draw smoothing line
+  geom_encircle(aes(x=area, y=poptotal), 
+                data=midwest_select, 
+                color="red", 
+                size=2, 
+                expand=0.08) +   # encircle
+  labs(subtitle="Area Vs Population", 
+       y="Population", 
+       x="Area", 
+       title="Scatterplot + Encircle", 
+       caption="Source: midwest")
+```
+
+### Jitter Plot
+Let’s look at a new data to draw the scatterplot. This time, I will use the *mpg* dataset to plot city mileage (*cty*) vs highway mileage (*hwy*).
+
+```{r}
+data(mpg, package="ggplot2") # alternate source: "http://goo.gl/uEeRGu")
+theme_set(theme_bw())  # pre-set the bw theme.
+
+g <- ggplot(mpg, aes(cty, hwy))
+
+# Scatterplot
+g + geom_point() + 
+  geom_smooth(method="lm", se=F) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Scatterplot with overlapping points", 
+       caption="Source: midwest")
+```
+
+
+What we have here is a scatterplot of city and highway mileage in *mpg* dataset. We have seen a similar scatterplot and this looks neat and gives a clear idea of how the city mileage (*cty*) and highway mileage (*hwy*) are well correlated.
+
+But, this innocent looking plot is hiding something. Can you find out?
+
+```{r}
+dim(mpg)
+```
+
+The original data has 234 data points but the chart seems to display fewer points. What has happened? This is because there are many overlapping points appearing as a single dot. The fact that both cty and hwy are integers in the source dataset made it all the more convenient to hide this detail. So just be extra careful the next time you make scatterplot with integers.
+
+So how to handle this? There are few options. We can make a jitter plot with *jitter_geom()*. As the name suggests, the overlapping points are randomly jittered around its original position based on a threshold controlled by the *width* argument.
+
+```{r}
+data(mpg, package="ggplot2")
+# mpg <- read.csv("http://goo.gl/uEeRGu")
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(mpg, aes(cty, hwy))
+g + geom_jitter(width = .5, size=1) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Jittered Points")
+```
+
+More points are revealed now. More the *width*, more the points are moved jittered from their original position.
+
+### Counts Chart
+The second option to overcome the problem of data points overlap is to use what is called a counts chart. Whereever there is more points overlap, the size of the circle gets bigger.
+
+```{r}
+data(mpg, package="ggplot2")
+# mpg <- read.csv("http://goo.gl/uEeRGu")
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(mpg, aes(cty, hwy))
+g + geom_count(col="tomato3", show.legend=F) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Counts Plot")
+```
+
+### Bubble plot
+While scatterplot lets you compare the relationship between 2 continuous variables, bubble chart serves well if you want to understand relationship within the underlying groups based on:
+
+1. A Categorical variable (by changing the color) and
+2. Another continuous variable (by changing the size of points).
+
+In simpler words, bubble charts are more suitable if you have 4-Dimensional data where two of them are numeric (X and Y) and one other categorical (color) and another numeric variable (size).
+
+The bubble chart clearly distinguishes the range of *displ* between the manufacturers and how the slope of lines-of-best-fit varies, providing a better visual comparison between the groups.
+
+```{r}
+data(mpg, package="ggplot2")
+# mpg <- read.csv("http://goo.gl/uEeRGu")
+
+mpg_select <- mpg[mpg$manufacturer %in% c("audi", "ford", "honda", "hyundai"), ]
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(mpg_select, aes(displ, cty)) + 
+  labs(subtitle="mpg: Displacement vs City Mileage",
+       title="Bubble chart")
+
+g + geom_jitter(aes(col=manufacturer, size=hwy)) + 
+  geom_smooth(aes(col=manufacturer), method="lm", se=F)
+```
+
+### Marginal Histogram / Boxplot
+If you want to show the relationship as well as the distribution in the same chart, use the marginal histogram. It has a histogram of the X and Y variables at the margins of the scatterplot.
+
+This can be implemented using the *ggMarginal()* function from the ‘*ggExtra*’ package. Apart from a histogram, you could choose to draw a marginal boxplot or density plot by setting the respective type option.
+
+```{r}
+library(ggExtra)
+library(grid)
+data(mpg, package="ggplot2")
+# mpg <- read.csv("http://goo.gl/uEeRGu")
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+mpg_select <- mpg[mpg$hwy >= 35 & mpg$cty > 27, ]
+g <- ggplot(mpg, aes(cty, hwy)) + 
+  geom_count() + 
+  geom_smooth(method="lm", se=F)
+
+g_marg_1 <- ggMarginal(g, type = "histogram", fill="transparent")
+g_marg_2 <- ggMarginal(g, type = "boxplot", fill="transparent")
+g_marg_3 <- ggMarginal(g, type = "density", fill="transparent")
+
+grid.newpage()
+grid.draw(g_marg_1)
+grid.draw(g_marg_2)
+grid.draw(g_marg_3)
+```
+
+### Correlogram
+Correlogram let’s you examine the corellation of multiple continuous variables present in the same dataframe. This is conveniently implemented using the *ggcorrplot* package.
+
+```{r}
+library(ggcorrplot)
+
+# Correlation matrix
+data(mtcars)
+corr <- round(cor(mtcars), 1)
+
+# Plot
+ggcorrplot(corr, hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of mtcars", 
+           ggtheme=theme_bw)
+```
+
+## Deviation
+Compare variation in values between small number of items (or categories) with respect to a fixed reference.
+
+### Diverging bars
+Diverging Bars is a bar chart that can handle both negative and positive values. 
+This can be implemented by a smart tweak with *geom_bar()*. 
+But the usage of *geom_bar()* can be quite confusing, because it can be used to make a bar chart as well as a histogram. 
+
+By default, *geom_bar()* has the stat set to count. That means, when you provide just a continuous X variable (and no Y variable), it tries to make a histogram out of the data.
+
+In order to make a bar chart create bars instead of histogram, you need to do two things.
+
+1. Set *stat=identity*
+2. Provide both x and y inside *aes()* where, x is either character or factor and y is numeric.
+
+In order to make sure you get diverging bars instead of just bars, make sure, your categorical variable has 2 categories that changes values at a certain threshold of the continuous variable. In below example, the *mpg* from *mtcars* dataset is normalised by computing the z score. Those vehicles with $\textit{mpg}\geq 0$ are marked green and those below are marked red.
+
+```{r}
+theme_set(theme_bw())  
+
+# Data Prep
+data("mtcars")  # load data
+mtcars$`car name` <- rownames(mtcars)  # create new column for car names
+mtcars$mpg_z <- round((mtcars$mpg - mean(mtcars$mpg))/sd(mtcars$mpg), 2)  # compute normalized mpg
+mtcars$mpg_type <- ifelse(mtcars$mpg_z < 0, "below", "above")  # above / below avg flag
+mtcars <- mtcars[order(mtcars$mpg_z), ]  # sort
+mtcars$`car name` <- factor(mtcars$`car name`, levels = mtcars$`car name`)  # convert to factor to retain sorted order in plot.
+
+# Diverging Barcharts
+ggplot(mtcars, aes(x=`car name`, y=mpg_z, label=mpg_z)) + 
+  geom_bar(stat='identity', aes(fill=mpg_type), width=.5)  +
+  scale_fill_manual(name="Mileage", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#00ba38", "below"="#f8766d")) + 
+  labs(subtitle="Normalised mileage from 'mtcars'", 
+       title= "Diverging Bars") + 
+  coord_flip()
+```
+
+### Diverging Lollipop Chart
+Lollipop chart conveys the same information as bar chart and diverging bar. Except that it looks more modern. 
+Instead of *geom_bar*, I use *geom_point* and *geom_segment* to get the lollipops right. 
+Let’s draw a lollipop using the same data I prepared in the previous example of diverging bars.
+
+```{r}
+theme_set(theme_bw())
+
+ggplot(mtcars, aes(x=`car name`, y=mpg_z, label=mpg_z)) + 
+  geom_point(stat='identity', fill="black", size=6)  +
+  geom_segment(aes(y = 0, 
+                   x = `car name`, 
+                   yend = mpg_z, 
+                   xend = `car name`), 
+               color = "black") +
+  geom_text(color="white", size=2) +
+  labs(title="Diverging Lollipop Chart", 
+       subtitle="Normalized mileage from 'mtcars': Lollipop") + 
+  ylim(-2.5, 2.5) +
+  coord_flip()
+```
+
+### Diverging Dot Plot
+Dot plot conveys similar information. 
+The principles are same as what we saw in Diverging bars, except that only point are used. Below example uses the same data prepared in the diverging bars example.
+
+```{r}
+theme_set(theme_bw())
+
+# Plot
+ggplot(mtcars, aes(x=`car name`, y=mpg_z, label=mpg_z)) + 
+  geom_point(stat='identity', aes(col=mpg_type), size=6)  +
+  scale_color_manual(name="Mileage", 
+                     labels = c("Above Average", "Below Average"), 
+                     values = c("above"="#00ba38", "below"="#f8766d")) + 
+  geom_text(color="white", size=2) +
+  labs(title="Diverging Dot Plot", 
+       subtitle="Normalized mileage from 'mtcars': Dotplot") + 
+  ylim(-2.5, 2.5) +
+  coord_flip()
+```
+
+### Area Chart
+Area charts are typically used to visualize how a particular metric (such as % returns from a stock) performed compared to a certain baseline. 
+Other types of %returns or %change data are also commonly used. The *geom_area()* implements this.
+
+```{r}
+library(quantmod)
+data("economics", package = "ggplot2")
+
+# Compute % Returns
+economics$returns_perc <- c(0, diff(economics$psavert)/economics$psavert[-length(economics$psavert)])
+
+# Create break points and labels for axis ticks
+brks <- economics$date[seq(1, length(economics$date), 12)]
+lbls <- lubridate::year(economics$date[seq(1, length(economics$date), 12)])
+
+# Plot
+ggplot(economics[1:100, ], aes(date, returns_perc)) + 
+  geom_area() + 
+  scale_x_date(breaks=brks, labels=lbls) + 
+  theme(axis.text.x = element_text(angle=90)) + 
+  labs(title="Area Chart", 
+       subtitle = "Perc Returns for Personal Savings", 
+       y="% Returns for Personal savings", 
+       caption="Source: economics")
+```
+
+## Ranking
+Used to compare the position or performance of multiple items with respect to each other. Actual values matters somewhat less than the ranking.
+
+### Ordered Bar Chart
+Ordered Bar Chart is a Bar Chart that is ordered by the Y axis variable. Just sorting the dataframe by the variable of interest isn’t enough to order the bar chart. In order for the bar chart to retain the order of the rows, the X axis variable (*i.e.*, the categories) has to be converted into a factor.
+
+Let’s plot the mean city *mileage* for each manufacturer from *mpg* dataset. First, aggregate the data and sort it before you draw the plot. Finally, the X variable is converted to a factor.
+
+Let’s see how that is done.
+
+```{r}
+# Prepare data: group mean city mileage by manufacturer.
+cty_mpg <- aggregate(mpg$cty, by=list(mpg$manufacturer), FUN=mean)  # aggregate
+colnames(cty_mpg) <- c("make", "mileage")  # change column names
+cty_mpg <- cty_mpg[order(cty_mpg$mileage), ]  # sort
+cty_mpg$make <- factor(cty_mpg$make, levels = cty_mpg$make)  # to retain the order in plot.
+head(cty_mpg, 4)
+#>          make  mileage
+#> 9     lincoln 11.33333
+#> 8  land rover 11.50000
+#> 3       dodge 13.13514
+#> 10    mercury 13.25000
+
+theme_set(theme_bw())
+
+# Draw plot
+ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+  geom_bar(stat="identity", width=.5, fill="tomato3") + 
+  labs(title="Ordered Bar Chart", 
+       subtitle="Make Vs Avg. Mileage", 
+       caption="source: mpg") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+### Lollipop Chart
+Lollipop charts conveys the same information as in bar charts. By reducing the thick bars into thin lines, it reduces the clutter and lays more emphasis on the value. It looks nice and modern.
+
+```{r}
+theme_set(theme_bw())
+
+# Plot
+ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+  geom_point(size=3) + 
+  geom_segment(aes(x=make, 
+                   xend=make, 
+                   y=0, 
+                   yend=mileage)) + 
+  labs(title="Lollipop Chart", 
+       subtitle="Make Vs Avg. Mileage", 
+       caption="source: mpg") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+### Dot Plot
+Dot plots are very similar to lollipops, but without the line and is flipped to horizontal position. It emphasizes more on the rank ordering of items with respect to actual values and how far apart are the entities with respect to each other.
+
+```{r}
+library(scales)
+theme_set(theme_classic())
+
+# Plot
+ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+  geom_point(col="tomato2", size=3) +   # Draw points
+  geom_segment(aes(x=make, 
+                   xend=make, 
+                   y=min(mileage), 
+                   yend=max(mileage)), 
+               linetype="dashed", 
+               size=0.1) +   # Draw dashed lines
+  labs(title="Dot Plot", 
+       subtitle="Make Vs Avg. Mileage", 
+       caption="source: mpg") +  
+  coord_flip()
+```
+
+### Slope Chart
+Slope charts are an excellent way of comparing the positional placements between 2 points on time. At the moment, there is no builtin function to construct this. Following code serves as a pointer about how you may approach this.
+
+```{r}
+library(scales)
+theme_set(theme_classic())
+
+# prep data
+df <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/gdppercap.csv")
+colnames(df) <- c("continent", "1952", "1957")
+left_label <- paste(df$continent, round(df$`1952`),sep=", ")
+right_label <- paste(df$continent, round(df$`1957`),sep=", ")
+df$class <- ifelse((df$`1957` - df$`1952`) < 0, "red", "green")
+
+# Plot
+p <- ggplot(df) + geom_segment(aes(x=1, xend=2, y=`1952`, yend=`1957`, col=class), size=.75, show.legend=F) + 
+                  geom_vline(xintercept=1, linetype="dashed", size=.1) + 
+                  geom_vline(xintercept=2, linetype="dashed", size=.1) +
+                  scale_color_manual(labels = c("Up", "Down"), 
+                                     values = c("green"="#00ba38", "red"="#f8766d")) +  # color of lines
+                  labs(x="", y="Mean GdpPerCap") +  # Axis labels
+                  xlim(.5, 2.5) + ylim(0,(1.1*(max(df$`1952`, df$`1957`))))  # X and Y axis limits
+
+# Add texts
+p <- p + geom_text(label=left_label, y=df$`1952`, x=rep(1, NROW(df)), hjust=1.1, size=3.5)
+p <- p + geom_text(label=right_label, y=df$`1957`, x=rep(2, NROW(df)), hjust=-0.1, size=3.5)
+p <- p + geom_text(label="Time 1", x=1, y=1.1*(max(df$`1952`, df$`1957`)), hjust=1.2, size=5)  # title
+p <- p + geom_text(label="Time 2", x=2, y=1.1*(max(df$`1952`, df$`1957`)), hjust=-0.1, size=5)  # title
+
+# Minify theme
+p + theme(panel.background = element_blank(), 
+           panel.grid = element_blank(),
+           axis.ticks = element_blank(),
+           axis.text.x = element_blank(),
+           panel.border = element_blank(),
+           plot.margin = unit(c(1,2,1,2), "cm"))
+```
+
+### Dumbbell Plot
+Dumbbell charts are a great tool if you wish to: 
+
+1. Visualize relative positions (like growth and decline) between two points in time. 
+2. Compare distance between two categories.
+
+In order to get the correct ordering of the dumbbells, the Y variable should be a factor and the levels of the factor variable should be in the same order as it should appear in the plot.
+
+```{r}
+library(ggalt)
+theme_set(theme_classic())
+
+health <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/health.csv")
+health$Area <- factor(health$Area, levels=as.character(health$Area))  # for right ordering of the dumbells
+
+# health$Area <- factor(health$Area)
+gg <- ggplot(health, aes(x=pct_2013, xend=pct_2014, y=Area, group=Area)) + 
+        geom_dumbbell(color="#a3c4dc", 
+                      size=0.75, 
+                      point.colour.l="#0e668b") + 
+        scale_x_continuous(label=percent) + 
+        labs(x=NULL, 
+             y=NULL, 
+             title="Dumbbell Chart", 
+             subtitle="Pct Change: 2013 vs 2014", 
+             caption="Source: https://github.com/hrbrmstr/ggalt") +
+        theme(plot.title = element_text(hjust=0.5, face="bold"),
+              plot.background=element_rect(fill="#f7f7f7"),
+              panel.background=element_rect(fill="#f7f7f7"),
+              panel.grid.minor=element_blank(),
+              panel.grid.major.y=element_blank(),
+              panel.grid.major.x=element_line(),
+              axis.ticks=element_blank(),
+              legend.position="top",
+              panel.border=element_blank())
+plot(gg)
+```
+
+## Distribution
+When you have lots and lots of data points and want to study where and how the data points are distributed.
+
+### Histogram
+By default, if only one variable is supplied, the geom_bar() tries to calculate the count. In order for it to behave like a bar chart, the stat=identity option has to be set and x and y values must be provided.
+
+* **Histogram on a continuous variable**
+Histogram on a continuous variable can be accomplished using either *geom_bar()* or *geom_histogram()*. When using *geom_histogram()*, you can control the number of bars using the bins option. 
+Else, you can set the range covered by each bin using *binwidth*.
+The value of *binwidth* is on the same scale as the continuous variable on which histogram is built. 
+Since *geom_histogram* gives facility to control both number of bins as well as *binwidth*, it is the preferred option to create histogram on continuous variables.
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Continuous (Numeric) Variable
+g <- ggplot(mpg, aes(displ)) + scale_fill_brewer(palette = "Spectral")
+
+g + geom_histogram(aes(fill=class), 
+                   binwidth = .1, 
+                   col="black", 
+                   size=.1) +  # change binwidth
+  labs(title="Histogram with Auto Binning", 
+       subtitle="Engine Displacement across Vehicle Classes")  
+
+g + geom_histogram(aes(fill=class), 
+                   bins=5, 
+                   col="black", 
+                   size=.1) +   # change number of bins
+  labs(title="Histogram with Fixed Bins", 
+       subtitle="Engine Displacement across Vehicle Classes") 
+```
+
+
+* **Histogram on a categorical variable**
+Histogram on a categorical variable would result in a frequency chart showing bars for each category. By adjusting *width*, you can adjust the thickness of the bars.
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(mpg, aes(manufacturer))
+g + geom_bar(aes(fill=class), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Manufacturer across Vehicle Classes") 
+```
+
+### Density plot
+```{r}
+theme_set(theme_classic())
+
+# Plot
+g <- ggplot(mpg, aes(cty))
+g + geom_density(aes(fill=factor(cyl)), alpha=0.8) + 
+    labs(title="Density plot", 
+         subtitle="City Mileage Grouped by Number of cylinders",
+         caption="Source: mpg",
+         x="City Mileage",
+         fill="# Cylinders")
+```
+
+
+### Box Plot
+Box plot is an excellent tool to study the distribution. It can also show the distributions within multiple groups, along with the median, range and outliers if any.
+
+The dark line inside the box represents the median. The top of box is 75%ile and bottom of box is 25%ile. The end points of the lines (aka whiskers) is at a distance of 1.5*IQR, where IQR or Inter Quartile Range is the distance between 25th and 75th percentiles. The points outside the whiskers are marked as dots and are normally considered as extreme points.
+
+Setting *varwidth=T* adjusts the width of the boxes to be proportional to the number of observation it contains.
+
+```{r}
+theme_set(theme_classic())
+
+# Plot
+g <- ggplot(mpg, aes(class, cty))
+g + geom_boxplot(varwidth=T, fill="plum") + 
+    labs(title="Box plot", 
+         subtitle="City Mileage grouped by Class of vehicle",
+         caption="Source: mpg",
+         x="Class of Vehicle",
+         y="City Mileage")
+```
+
+```{r}
+library(ggthemes)
+g <- ggplot(mpg, aes(class, cty))
+g + geom_boxplot(aes(fill=factor(cyl))) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Box plot", 
+       subtitle="City Mileage grouped by Class of vehicle",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+
+### Dot + Box Plot
+On top of the information provided by a box plot, the dot plot can provide more clear information in the form of summary statistics by each group. The dots are staggered such that each dot represents one observation. So, in below chart, the number of dots for a given manufacturer will match the number of rows of that manufacturer in source data.
+```{r}
+theme_set(theme_bw())
+
+# plot
+g <- ggplot(mpg, aes(manufacturer, cty))
+g + geom_boxplot() + 
+  geom_dotplot(binaxis='y', 
+               stackdir='center', 
+               dotsize = .5, 
+               fill="red") +
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Box plot + Dot plot", 
+       subtitle="City Mileage vs Class: Each dot represents 1 row in source data",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+### Tufte Boxplot
+Tufte box plot, provided by ggthemes package is inspired by the works of Edward Tufte. Tufte’s Box plot is just a box plot made minimal and visually appealing.
+```{r}
+library(ggplot2)
+theme_set(theme_tufte())  # from ggthemes
+
+# plot
+g <- ggplot(mpg, aes(manufacturer, cty))
+g + geom_tufteboxplot() + 
+      theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+      labs(title="Tufte Styled Boxplot", 
+           subtitle="City Mileage grouped by Class of vehicle",
+           caption="Source: mpg",
+           x="Class of Vehicle",
+           y="City Mileage")
+```
+
+### Violin Plot
+A violin plot is similar to box plot but shows the density within groups. Not much info provided as in boxplots. It can be drawn using *geom_violin()*.
+```{r}
+theme_set(theme_bw())
+
+# plot
+g <- ggplot(mpg, aes(class, cty))
+g + geom_violin() + 
+  labs(title="Violin plot", 
+       subtitle="City Mileage vs Class of vehicle",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+### Population Pyramid
+Population pyramids offer a unique way of visualizing how much population or what percentage of population fall under a certain category. The below pyramid is an excellent example of how many users are retained at each stage of a email marketing campaign funnel.
+```{r}
+library(ggthemes)
+options(scipen = 999)  # turns of scientific notations like 1e+40
+
+# Read data
+email_campaign_funnel <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/email_campaign_funnel.csv")
+
+# X Axis Breaks and Labels 
+brks <- seq(-15000000, 15000000, 5000000)
+lbls = paste0(as.character(c(seq(15, 0, -5), seq(5, 15, 5))), "m")
+
+# Plot
+ggplot(email_campaign_funnel, aes(x = Stage, y = Users, fill = Gender)) +   # Fill column
+                              geom_bar(stat = "identity", width = .6) +   # draw the bars
+                              scale_y_continuous(breaks = brks,   # Breaks
+                                                 labels = lbls) + # Labels
+                              coord_flip() +  # Flip axes
+                              labs(title="Email Campaign Funnel") +
+                              theme_tufte() +  # Tufte theme from ggfortify
+                              theme(plot.title = element_text(hjust = .5), 
+                                    axis.ticks = element_blank()) +   # Centre plot title
+                              scale_fill_brewer(palette = "Dark2")  # Color palette
+```
+
+## Composition
+### Waffle Chart
+Waffle charts is a nice way of showing the categorical composition of the total population. Though there is no direct function, it can be articulated by smartly maneuvering the *ggplot2* using *geom_tile()* function. The below template should help you create your own waffle.
+
+```{r}
+var <- mpg$class  # the categorical data 
+
+## Prep data (nothing to change here)
+nrows <- 10
+df <- expand.grid(y = 1:nrows, x = 1:nrows)
+categ_table <- round(table(var) * ((nrows*nrows)/(length(var))))
+categ_table
+#>   2seater    compact    midsize    minivan     pickup subcompact        suv 
+#>         2         20         18          5         14         15         26 
+
+df$category <- factor(rep(names(categ_table), categ_table))  
+# NOTE: if sum(categ_table) is not 100 (i.e. nrows^2), it will need adjustment to make the sum to 100.
+
+## Plot
+ggplot(df, aes(x = x, y = y, fill = category)) + 
+        geom_tile(color = "black", size = 0.5) +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(expand = c(0, 0), trans = 'reverse') +
+        scale_fill_brewer(palette = "Set3") +
+        labs(title="Waffle Chart", subtitle="'Class' of vehicles",
+             caption="Source: mpg") + 
+        theme(panel.border = element_rect(size = 2),
+              plot.title = element_text(size = rel(1.2)),
+              axis.text = element_blank(),
+              axis.title = element_blank(),
+              axis.ticks = element_blank(),
+              legend.title = element_blank(),
+              legend.position = "right")
+```
+
+### Pie Chart
+Pie chart, a classic way of showing the compositions is equivalent to the waffle chart in terms of the information conveyed. But is a slightly tricky to implement in *ggplot2* using the *coord_polar()*.
+
+```{r}
+theme_set(theme_classic())
+
+# Source: Frequency table
+df <- as.data.frame(table(mpg$class))
+colnames(df) <- c("class", "freq")
+pie <- ggplot(df, aes(x = "", y=freq, fill = factor(class))) + 
+  geom_bar(width = 1, stat = "identity") +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Pie Chart of class", 
+       caption="Source: mpg")
+
+pie + coord_polar(theta = "y", start=0)
+
+# Source: Categorical variable.
+# mpg$class
+pie <- ggplot(mpg, aes(x = "", fill = factor(class))) + 
+  geom_bar(width = 1) +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Pie Chart of class", 
+       caption="Source: mpg")
+  
+pie + coord_polar(theta = "y", start=0)
+```
+
+### Treemap
+In a treemap, each tile represents a single observation, with the area of the tile proportional to a variable. Let’s start by drawing a treemap with each tile representing a G-20 country. The area of the tile will be mapped to the country’s GDP, and the tile’s fill colour mapped to its HDI (Human Development Index). geom_treemap is the basic geom for this purpose.
+
+```{r}
+library(treemapify)
+ggplot(G20, aes(area = gdp_mil_usd, fill = hdi)) +
+  geom_treemap()
+```
+
+
+This plot isn’t very useful without the knowing what country is represented by each tile. *geom_treemap_text* can be used to add a text label to each tile. It uses the ‘*ggfittext*’ package to resize the text so it fits the tile. In addition to standard text formatting aesthetics you would use in *geom_text*, like fontface or colour, we can pass additional options specific for ‘*ggfittext*’. For example, we can place the text in the centre of the tile with *place = "centre"*, and expand it to fill as much of the tile as possible with *grow = TRUE*.
+
+
+```{r}
+ggplot(G20, aes(area = gdp_mil_usd, fill = hdi, label = country)) +
+  geom_treemap() +
+  geom_treemap_text(fontface = "italic", colour = "white", place = "centre",
+                    grow = TRUE)
+```
+
+Note that several tiles in the top right corner have no labels. *geom_treemap_text* will hide text labels that cannot fit a tile without being shrunk below a minimum size, by default 4 points. This can be adjusted with the *min.size* argument.
+
+*geom_treemap* supports subgrouping of tiles within a treemap by passing a subgroup aesthetic. Let’s subgroup the countries by region, draw a border around each subgroup with *geom_treemap_subgroup_border*, and label each subgroup with *geom_treemap_subgroup_text*. *geom_treemap_subgroup_text* takes the same arguments for text placement and resizing as *geom_treemap_text*.
+
+```{r}
+ggplot(G20, aes(area = gdp_mil_usd, fill = hdi, label = country,
+                subgroup = region)) +
+  geom_treemap() +
+  geom_treemap_subgroup_border() +
+  geom_treemap_subgroup_text(place = "centre", grow = T, alpha = 0.5, colour =
+                             "black", fontface = "italic", min.size = 0) +
+  geom_treemap_text(colour = "white", place = "topleft", reflow = T)
+```
+Up to three nested levels of subgrouping are supported with the *subgroup2* and *subgroup3* aesthetics. Borders and text labels for these subgroups can be drawn with *geom_treemap_subgroup2_border*, etc. Note that ‘*ggplot2*’ draws plot layers in the order that they are added. This means it is possible to accidentally hide one layer of subgroup borders with another. Usually, it’s best to add the border layers in order from deepest to shallowest, i.e. *geom_treemap_subgroup3_border* then *geom_treemap_subgroup2_border* then *geom_treemap_subgroup_border*.
+
+```{r}
+ggplot(G20, aes(area = 1, label = country, subgroup = hemisphere,
+                subgroup2 = region, subgroup3 = econ_classification)) +
+  geom_treemap() +
+  geom_treemap_subgroup3_border(colour = "blue", size = 1) +
+  geom_treemap_subgroup2_border(colour = "white", size = 3) +
+  geom_treemap_subgroup_border(colour = "red", size = 5) +
+  geom_treemap_subgroup_text(
+    place = "middle",
+    colour = "red",
+    alpha = 0.5,
+    grow = T
+  ) +
+  geom_treemap_subgroup2_text(
+    colour = "white",
+    alpha = 0.5,
+    fontface = "italic"
+  ) +
+  geom_treemap_subgroup3_text(place = "top", colour = "blue", alpha = 0.5) +
+  geom_treemap_text(colour = "white", place = "middle", reflow = T)
+```
+
+### Bar Chart
+By default, *geom_bar()* has the stat set to count. That means, when you provide just a continuous X variable (and no Y variable), it tries to make a histogram out of the data.
+
+In order to make a bar chart create bars instead of histogram, you need to do two things.
+
+1. Set *stat=identity*
+2. Provide both x and y inside *aes()* where, x is either character or factor and y is numeric.
+A bar chart can be drawn from a categorical column variable or from a separate frequency table. By adjusting width, you can adjust the thickness of the bars. If your data source is a frequency table, that is, if you don’t want *ggplot* to compute the counts, you need to set the *stat=identity* inside the *geom_bar()*.
+
+```{r}
+# prep frequency table
+freqtable <- table(mpg$manufacturer)
+df <- as.data.frame.table(freqtable)
+head(df)
+#>          Var1 Freq
+#> 1        audi   18
+#> 2   chevrolet   19
+#> 3       dodge   37
+#> 4        ford   25
+#> 5       honda    9
+#> 6     hyundai   14
+
+theme_set(theme_classic())
+
+# Plot
+g <- ggplot(df, aes(Var1, Freq))
+g + geom_bar(stat="identity", width = 0.5, fill="tomato2") + 
+      labs(title="Bar Chart", 
+           subtitle="Manufacturer of vehicles", 
+           caption="Source: Frequency of Manufacturers from 'mpg' dataset") +
+      theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+
+It can be computed directly from a column variable as well. In this case, only X is provided and *stat=identity* is not set.
+
+```{r}
+# From on a categorical column variable
+g <- ggplot(mpg, aes(manufacturer))
+g + geom_bar(aes(fill=class), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+  labs(title="Categorywise Bar Chart", 
+       subtitle="Manufacturer of vehicles", 
+       caption="Source: Manufacturers from 'mpg' dataset")
+```
+
+## Change
+### Time Series Plot From a Time Series Object (ts)
+The *ggfortify* package allows autoplot to automatically plot directly from a time series object (*ts*)
+
+```{r}
+library(ggfortify)
+theme_set(theme_classic())
+
+# Plot 
+autoplot(AirPassengers) + 
+  labs(title="AirPassengers") + 
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+### Time Series Plot From a Data Frame
+Using *geom_line()*, a time series (or line chart) can be drawn from a *data.frame* as well. The X axis breaks are generated by default. In below example, the breaks are formed once every 10 years.
+
+```{r}
+theme_set(theme_classic())
+
+# Allow Default X Axis Labels
+ggplot(economics, aes(x=date)) + 
+  geom_line(aes(y=returns_perc)) + 
+  labs(title="Time Series Chart", 
+       subtitle="Returns Percentage from 'Economics' Dataset", 
+       caption="Source: Economics", 
+       y="Returns %")
+```
+
+### Time Series Plot For a Monthly Time Series
+If you want to set your own time intervals (breaks) in X axis, you need to set the breaks and labels using *scale_x_date()*.
+
+```{r}
+library(lubridate)
+theme_set(theme_bw())
+
+economics_m <- economics[1:24, ]
+
+# labels and breaks for X axis text
+lbls <- paste0(month.abb[month(economics_m$date)], " ", lubridate::year(economics_m$date))
+brks <- economics_m$date
+
+# plot
+ggplot(economics_m, aes(x=date)) + 
+  geom_line(aes(y=returns_perc)) + 
+  labs(title="Monthly Time Series", 
+       subtitle="Returns Percentage from Economics Dataset", 
+       caption="Source: Economics", 
+       y="Returns %") +  # title and caption
+  scale_x_date(labels = lbls, 
+               breaks = brks) +  # change to monthly ticks and labels
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5),  # rotate x axis text
+        panel.grid.minor = element_blank())  # turn off minor grid
+```
+
+### Time Series Plot For a Yearly Time Series
+```{r}
+library(lubridate)
+theme_set(theme_bw())
+
+economics_y <- economics[1:90, ]
+
+# labels and breaks for X axis text
+brks <- economics_y$date[seq(1, length(economics_y$date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+ggplot(economics_y, aes(x=date)) + 
+  geom_line(aes(y=returns_perc)) + 
+  labs(title="Yearly Time Series", 
+       subtitle="Returns Percentage from Economics Dataset", 
+       caption="Source: Economics", 
+       y="Returns %") +  # title and caption
+  scale_x_date(labels = lbls, 
+               breaks = brks) +  # change to monthly ticks and labels
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5),  # rotate x axis text
+        panel.grid.minor = element_blank())  # turn off minor grid
+```
+
+### Time Series Plot From Long Data Format: Multiple Time Series in Same Dataframe Column
+In this example, I construct the ggplot from a long data format. That means, the column names and respective values of all the columns are stacked in just 2 variables (variable and value respectively). If you were to convert this data to wide format, it would look like the economics dataset.
+
+In below example, the *geom_line* is drawn for value column and the aes(col) is set to variable. This way, with just one call to *geom_line*, multiple colored lines are drawn, one each for each unique value in variable column. The *scale_x_date()* changes the X axis breaks and labels, and *scale_color_manual* changes the color of the lines.
+
+```{r}
+data(economics_long, package = "ggplot2")
+head(economics_long)
+#>         date variable value      value01
+#>       <date>   <fctr> <dbl>        <dbl>
+#> 1 1967-07-01      pce 507.4 0.0000000000
+#> 2 1967-08-01      pce 510.5 0.0002660008
+#> 3 1967-09-01      pce 516.3 0.0007636797
+#> 4 1967-10-01      pce 512.9 0.0004719369
+#> 5 1967-11-01      pce 518.1 0.0009181318
+#> 6 1967-12-01      pce 525.8 0.0015788435
+library(lubridate)
+theme_set(theme_bw())
+
+df <- economics_long[economics_long$variable %in% c("psavert", "uempmed"), ]
+df <- df[lubridate::year(df$date) %in% c(1967:1981), ]
+
+# labels and breaks for X axis text
+brks <- df$date[seq(1, length(df$date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+ggplot(df, aes(x=date)) + 
+  geom_line(aes(y=value, col=variable)) + 
+  labs(title="Time Series of Returns Percentage", 
+       subtitle="Drawn from Long Data format", 
+       caption="Source: Economics", 
+       y="Returns %", 
+       color=NULL) +  # title and caption
+  scale_x_date(labels = lbls, breaks = brks) +  # change to monthly ticks and labels
+  scale_color_manual(labels = c("psavert", "uempmed"), 
+                     values = c("psavert"="#00ba38", "uempmed"="#f8766d")) +  # line color
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5, size = 8),  # rotate x axis text
+        panel.grid.minor = element_blank())  # turn off minor grid
+```
+
+### Time Series Plot From Wide Data Format: Data in Multiple Columns of Dataframe
+As noted in the part 2 of this tutorial, whenever your plot’s geom (like points, lines, bars, etc) changes the fill, size, col, shape or stroke based on another column, a legend is automatically drawn.
+
+But if you are creating a time series (or even other types of plots) from a wide data format, you have to draw each line manually by calling *geom_line()* once for every line. So, a legend will not be drawn by default.
+
+However, having a legend would still be nice. This can be done using the *scale_aesthetic_manual()* format of functions (like, *scale_color_manual()* if only the color of your lines change). Using this function, you can give a legend title with the name argument, tell what color the legend should take with the values argument and also set the legend labels.
+
+Even though the below plot looks exactly like the previous one, the approach to construct this is different.
+
+You might wonder why I used this function in previous example for long data format as well. Note that, in previous example, it was used to change the color of the line only. Without *scale_color_manual()*, you would still have got a legend, but the lines would be of a different (default) color. But in current example, without *scale_color_manual()*, you wouldn’t even have a legend. Try it out!
+
+```{r}
+library(lubridate)
+theme_set(theme_bw())
+
+df <- economics[, c("date", "psavert", "uempmed")]
+df <- df[lubridate::year(df$date) %in% c(1967:1981), ]
+
+# labels and breaks for X axis text
+brks <- df$date[seq(1, length(df$date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+ggplot(df, aes(x=date)) + 
+  geom_line(aes(y=psavert, col="psavert")) + 
+  geom_line(aes(y=uempmed, col="uempmed")) + 
+  labs(title="Time Series of Returns Percentage", 
+       subtitle="Drawn From Wide Data format", 
+       caption="Source: Economics", y="Returns %") +  # title and caption
+  scale_x_date(labels = lbls, breaks = brks) +  # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("psavert"="#00ba38", "uempmed"="#f8766d")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+```
+
+### Stacked Area Chart
+Stacked area chart is just like a line chart, except that the region below the plot is all colored. This is typically used when:
+
+1. You want to describe how a quantity or volume (rather than something like price) changed over time
+2. You have many data points. For very few data points, consider plotting a bar chart.
+3. You want to show the contribution from individual components.
+This can be plotted using geom_area which works very much like *geom_line*. But there is an important point to note. By default, each *geom_area()* starts from the bottom of Y axis (which is typically 0), but, if you want to show the contribution from individual components, you want the *geom_area* to be stacked over the top of previous component, rather than the floor of the plot itself. So, you have to add all the bottom layers while setting the y of *geom_area*.
+
+In below example, I have set it as *y=psavert+uempmed* for the topmost *geom_area()*.
+
+However nice the plot looks, the caveat is that, it can easily become complicated and uninterprettable if there are too many components.
+
+```{r}
+library(lubridate)
+theme_set(theme_bw())
+
+df <- economics[, c("date", "psavert", "uempmed")]
+df <- df[lubridate::year(df$date) %in% c(1967:1981), ]
+
+# labels and breaks for X axis text
+brks <- df$date[seq(1, length(df$date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+ggplot(df, aes(x=date)) + 
+  geom_area(aes(y=psavert+uempmed, fill="psavert")) + 
+  geom_area(aes(y=uempmed, fill="uempmed")) + 
+  labs(title="Area Chart of Returns Percentage", 
+       subtitle="From Wide Data format", 
+       caption="Source: Economics", 
+       y="Returns %") +  # title and caption
+  scale_x_date(labels = lbls, breaks = brks) +  # change to monthly ticks and labels
+  scale_fill_manual(name="", 
+                    values = c("psavert"="#00ba38", "uempmed"="#f8766d")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+```
+
+### Calendar Heatmap
+When you want to see the variation, especially the highs and lows, of a metric like stock price, on an actual calendar itself, the calendar heat map is a great tool. It emphasizes the variation visually over time rather than the actual value itself.
+
+This can be implemented using the *geom_tile*. But getting it in the right format has more to do with the data preparation rather than the plotting itself.
+```{r}
+library(plyr)
+library(scales)
+library(zoo)
+
+df <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/yahoo.csv")
+df$date <- as.Date(df$date)  # format date
+df <- df[df$year >= 2012, ]  # filter reqd years
+
+# Create Month Week
+df$yearmonth <- as.yearmon(df$date)
+df$yearmonthf <- factor(df$yearmonth)
+df <- ddply(df,.(yearmonthf), transform, monthweek=1+week-min(week))  # compute week number of month
+df <- df[, c("year", "yearmonthf", "monthf", "week", "monthweek", "weekdayf", "VIX.Close")]
+head(df)
+#>   year yearmonthf monthf week monthweek weekdayf VIX.Close
+#> 1 2012   Jan 2012    Jan    1         1      Tue     22.97
+#> 2 2012   Jan 2012    Jan    1         1      Wed     22.22
+#> 3 2012   Jan 2012    Jan    1         1      Thu     21.48
+#> 4 2012   Jan 2012    Jan    1         1      Fri     20.63
+#> 5 2012   Jan 2012    Jan    2         2      Mon     21.07
+#> 6 2012   Jan 2012    Jan    2         2      Tue     20.69
+
+
+# Plot
+ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+  geom_tile(colour = "white") + 
+  facet_grid(year~monthf) + 
+  scale_fill_gradient(low="red", high="green") +
+  labs(x="Week of Month",
+       y="",
+       title = "Time-Series Calendar Heatmap", 
+       subtitle="Yahoo Closing Price", 
+       fill="Close")
+```
+
+### Slope Chart
+Slope chart is a great tool of you want to visualize change in value and ranking between categories. This is more suitable over a time series when there are very few time points.
+```{r}
+library(dplyr)
+theme_set(theme_classic())
+source_df <- read.csv("https://raw.githubusercontent.com/jkeirstead/r-slopegraph/master/cancer_survival_rates.csv")
+
+# Define functions. Source: https://github.com/jkeirstead/r-slopegraph
+tufte_sort <- function(df, x="year", y="value", group="group", method="tufte", min.space=0.05) {
+    ## First rename the columns for consistency
+    ids <- match(c(x, y, group), names(df))
+    df <- df[,ids]
+    names(df) <- c("x", "y", "group")
+
+    ## Expand grid to ensure every combination has a defined value
+    tmp <- expand.grid(x=unique(df$x), group=unique(df$group))
+    tmp <- merge(df, tmp, all.y=TRUE)
+    df <- mutate(tmp, y=ifelse(is.na(y), 0, y))
+  
+    ## Cast into a matrix shape and arrange by first column
+    require(reshape2)
+    tmp <- dcast(df, group ~ x, value.var="y")
+    ord <- order(tmp[,2])
+    tmp <- tmp[ord,]
+    
+    min.space <- min.space*diff(range(tmp[,-1]))
+    yshift <- numeric(nrow(tmp))
+    ## Start at "bottom" row
+    ## Repeat for rest of the rows until you hit the top
+    for (i in 2:nrow(tmp)) {
+        ## Shift subsequent row up by equal space so gap between
+        ## two entries is >= minimum
+        mat <- as.matrix(tmp[(i-1):i, -1])
+        d.min <- min(diff(mat))
+        yshift[i] <- ifelse(d.min < min.space, min.space - d.min, 0)
+    }
+
+    
+    tmp <- cbind(tmp, yshift=cumsum(yshift))
+
+    scale <- 1
+    tmp <- melt(tmp, id=c("group", "yshift"), variable.name="x", value.name="y")
+    ## Store these gaps in a separate variable so that they can be scaled ypos = a*yshift + y
+
+    tmp <- transform(tmp, ypos=y + scale*yshift)
+    return(tmp)
+   
+}
+
+plot_slopegraph <- function(df) {
+    ylabs <- subset(df, x==head(x,1))$group
+    yvals <- subset(df, x==head(x,1))$ypos
+    fontSize <- 3
+    gg <- ggplot(df,aes(x=x,y=ypos)) +
+        geom_line(aes(group=group),colour="grey80") +
+        geom_point(colour="white",size=8) +
+        geom_text(aes(label=y), size=fontSize, family="American Typewriter") +
+        scale_y_continuous(name="", breaks=yvals, labels=ylabs)
+    return(gg)
+}    
+
+## Prepare data    
+df <- tufte_sort(source_df, 
+                 x="year", 
+                 y="value", 
+                 group="group", 
+                 method="tufte", 
+                 min.space=0.05)
+
+df <- transform(df, 
+                x=factor(x, levels=c(5,10,15,20), 
+                            labels=c("5 years","10 years","15 years","20 years")), 
+                y=round(y))
+
+## Plot
+plot_slopegraph(df) + labs(title="Estimates of % survival rates") + 
+                      theme(axis.title=element_blank(),
+                            axis.ticks = element_blank(),
+                            plot.title = element_text(hjust=0.5,
+                                                      family = "American Typewriter",
+                                                      face="bold"),
+                            axis.text = element_text(family = "American Typewriter",
+                                                     face="bold"))
+```
+
+### Seasonal Plot
+If you are working with a time series object of class ts or xts, you can view the seasonal fluctuations through a seasonal plot drawn using *forecast::ggseasonplot*. Below is an example using the native *AirPassengers* and *nottem* time series.
+
+You can see the traffic increase in air passengers over the years along with the repetitive seasonal patterns in traffic. Whereas Nottingham does not show an increase in overal temperatures over the years, but they definitely follow a seasonal pattern.
+```{r}
+library(forecast)
+theme_set(theme_classic())
+
+# Subset data
+nottem_small <- window(nottem, start=c(1920, 1), end=c(1925, 12))  # subset a smaller timewindow
+
+# Plot
+ggseasonplot(AirPassengers) + labs(title="Seasonal plot: International Airline Passengers")
+ggseasonplot(nottem_small) + labs(title="Seasonal plot: Air temperatures at Nottingham Castle")
+```
+ ##  Groups
+### Hierarchical Dendrogram
+```{r}
+library(ggdendro)
+theme_set(theme_bw())
+
+hc <- hclust(dist(USArrests), "ave")  # hierarchical clustering
+
+# plot
+ggdendrogram(hc, rotate = TRUE, size = 2)
+```
+
+## Clusters
+It is possible to show the distinct clusters or groups using *geom_encircle()*. If the dataset has multiple weak features, you can compute the principal components and draw a scatterplot using PC1 and PC2 as X and Y axis.
+
+The *geom_encircle()* can be used to encircle the desired groups. The only thing to note is the data argument to *geom_circle()*. You need to provide a subsetted dataframe that contains only the observations (rows) that belong to the group as the data argument.
+```{r}
+library(ggalt)
+library(ggfortify)
+theme_set(theme_classic())
+
+# Compute data with principal components ------------------
+df <- iris[c(1, 2, 3, 4)]
+pca_mod <- prcomp(df)  # compute principal components
+
+# Data frame of principal components ----------------------
+df_pc <- data.frame(pca_mod$x, Species=iris$Species)  # dataframe of principal components
+df_pc_vir <- df_pc[df_pc$Species == "virginica", ]  # df for 'virginica'
+df_pc_set <- df_pc[df_pc$Species == "setosa", ]  # df for 'setosa'
+df_pc_ver <- df_pc[df_pc$Species == "versicolor", ]  # df for 'versicolor'
+ 
+# Plot ----------------------------------------------------
+ggplot(df_pc, aes(PC1, PC2, col=Species)) + 
+  geom_point(aes(shape=Species), size=2) +   # draw points
+  labs(title="Iris Clustering", 
+       subtitle="With principal components PC1 and PC2 as X and Y axis",
+       caption="Source: Iris") + 
+  coord_cartesian(xlim = 1.2 * c(min(df_pc$PC1), max(df_pc$PC1)), 
+                  ylim = 1.2 * c(min(df_pc$PC2), max(df_pc$PC2))) +   # change axis limits
+  geom_encircle(data = df_pc_vir, aes(x=PC1, y=PC2)) +   # draw circles
+  geom_encircle(data = df_pc_set, aes(x=PC1, y=PC2)) + 
+  geom_encircle(data = df_pc_ver, aes(x=PC1, y=PC2))
+```
+
+# Interactivity
+
+Using the library *plotly*:
+```{r}
+library(plotly)
+data=data.frame(cond = rep(c("condition_1", "condition_2"), each=10), my_x = 1:100 + rnorm(100,sd=9), my_y = 1:100 + rnorm(100,sd=16) )
+my_graph=ggplot(data, aes(x=my_x, y=my_y)) + geom_point(shape=1)
+ 
+# Let's make it interactive using the ggplotly function !
+p=ggplotly(my_graph)
+p
+```
+
+# Animation
+
+Animation in *ggplot2* can be obtained through the *gganimate* package, which has been recently restructured, thus it is not unlikely that some older code might not work with the new version 1.0.7.
+In what follows we present a couple of examples of animation, from [How to create animations in R with gganimate](https://anderfernandez.com/en/blog/how-to-create-animations-in-r-with-gganimate/) and [Visualizing 75 Years of Measles Incidence Using Gganimate](https://samia.rbind.io/post/making-an-animated-measles-map-a-tidy-tuesday-project/).
+
+One of the key aspects of a good animation is that the user knows why the graph is moving, that is, that the user knows what each moment on the animation means.
+
+To do so, the gganimate functions includes a really interesting functionality: to include those variables on ggplot labs function. As you can see in the table below, each transaction function has each own variable that we should include in the labs. In the case of *transition_time* the variable is *frame_time*.
+
+|**Name of the function**	|**Labs variable**|
+|---------------------------|-------------------|
+|transition_components      |frame_time         |
+|transition_events	        |frame_time         |
+|transition_filter	        |previous_filter, closest_filter, next_filter |
+|transition_layer	          |previous_layer, closest_layer, next_layer, nlayers |
+|transition_manual	        |previous_frame, current_frame, next_frame |
+|transition_reveal	        |frame_along |
+|transition_states	        |previous_state, closest_state, next_state |
+|transition_time	          |frame_time |
+
+## A first example 
+Let's prepare an example using the *gapminder* dataset from the same package.
+
+```{r}
+library(gapminder)
+data = gapminder
+head(data)
+```
+
+In order to create our animation, we will begin by creating a normal ggplot graph. If a lot of data overlays on a single state (in our case the year) the graph won’t be very visual. So, we will do it just for one country so that it is much more visual. 
+
+```{r}
+library(tidyverse)
+
+my_graph <- datos %>%
+  ggplot() + 
+    geom_point(aes(x = gdpPercap, y = lifeExp, col = continent, size = pop), alpha = 0.8) + theme_minimal() + 
+    theme(legend.position = "bottom") + guides(size = "none") + 
+    labs(x = "GDP per Capita" ,y = "Life Expectancy",  col = "") 
+
+show(my_graph)
+```
+
+Now we can create the animation simply by passing the *transaction* function. Just with this function *gganimate* will create the animation. Yes, just with a function we can create an animation. Let’s see it:
+
+```{r}
+library(gganimate)
+
+my_graph +
+  transition_time(year)
+```
+
+While you can create an animation with only one function, there are a lot of settings to adjust to make the animation look awesome: we will now learn how to improve that animation.
+
+```{r}
+library(gganimate)
+
+my_graph +
+  transition_time(year)+
+  labs(title = "Year: {frame_time}")
+
+```
+
+As you can see the date is included in the title but t is small, it is out of the graph and disables to use the title for telling other things. It is much more visual and impactful to include the data on the same graph with an extra ggplot layer. In this way, we can use the title for whatever we want, we can give the transition state the look and feel that we want and it’s within the graph. Let’s see an example:
+
+```{r}
+my_graph +
+  geom_text(aes(x = min(gdpPercap), y = min(lifeExp), label = as.factor(year)) , hjust=-2, vjust = -0.2, alpha = 0.2,  col = "gray", size = 20) +
+  transition_states(as.factor(year), state_length = 0)
+```
+
+As you can see, in this case, I have used the function *transition_states* instead of *transition_time* and I have also change the year variables to a factor. The reason is that the transition functions interpolate numeric data, which makes it look terribly bad. When we convert the number into a factor the problem disappears.
+
+Besides, I have also included the parameter *state_length* to be zero. This parameter allows us to control for how long will pause before changing to the new state. In my case, I will set as zero, because with higher values the transition wouldn’t be smooth.
+
+Note that he scales of the animation do not change during the animation. This generates two things:
+
+* The growth is not that well represented. By having the final value visible from the beginning, we do not have as much growth prospects.
+* If the scale is very wide and the initial values are low (for example in aggregate data), we lose perspective of what happens at the beginning, when the values are low.
+
+If we want to avoid this and we want to better see how the variables grow, it is better to adjust the scale in each frame. For this, we will use the *view_follow* function.
+
+A very clear impact of this issue is the impact on the evolution graphs. Let’s see an example of the evolution of the Spanish GDP.
+
+```{r}
+data %>%
+  filter(country == "Spain") %>%
+  ggplot(aes(year, pop)) + geom_point() + geom_line() +
+  theme_minimal() +
+  transition_reveal(year)
+```
+
+As you can see, as we do not change the scales, the plot does not look that alive and it’s not so impactful. However, if we make the axis scales change automatically the speed of the change will make us better see how the GPD per Capita has evolved.
+
+```{r}
+data %>%
+  filter(country == "Spain") %>%
+  ggplot(aes(year, pop)) + geom_point() + geom_line() + 
+  geom_text(aes(x = min(year), y = min(pop), label = as.factor(year)) , hjust=-2, vjust = -0.2, alpha = 0.5,  col = "gray", size = 20) +
+  theme_minimal() +
+  transition_reveal(year) + 
+  view_follow()
+```
+
+As you can see, these two tricks have suppose a significant improvement in our animation. But there is still a very important thing to learn: the animation renderization.
+
+## Rendering
+
+To render is to convert our R commands into an animation. Is at this step when we can personalize a lot of the key elements of our animations, such as:
+
+* **The width and height** of the animation to create an animation that it is correctly seen on the device that we want to see it.
+* **Duration, number of frames, and number of frames per second (fps)**: this will make you the animation see fluently.
+* **Output file format**: if you don’t want to create a gif, you can also create a video too.
+To render our animation first we need to save the result of the animation as an object. By doing so, we can now pass this object to the animate function. This function has many other parameters with which we can adjust the things we have commented on previously.
+
+* **fps**: the human being is able to distinguish between 10 and 12 frames per second. If we add more frames, the brain does not see many images together, but rather it sees an animation (link).Thus, the fps parameter should always be higher than 12. I would recommend setting it at 25fps, as it balances between fluentness and lightness.
+* **duration**: it sets for how long should the animation long. This will depend on the number of states that we have. In my opinion, for transitions with a lot of states, I would set the state to last for 0.5 seconds. Anyway, there is not a global option and I would recommend trying several durations.
+
+### Example: bar chart race
+Now we will apply everything that we have learned on how to create animations in R with *gganimate* to create an awesome animation: a bar chart race.
+
+To create our bar chart race we will analyze the evolution of the countries with the highest GDP per capita on the *gapminder* dataset. To do so, first, we need to get the rank the countries on each year. This is something that we can easily do with *dplyr*:
+
+```{r}
+data2 <- data %>%
+  group_by(year) %>%
+  arrange(year, desc(gdpPercap)) %>%
+  mutate(ranking = row_number()) %>%
+  filter(ranking <=15)
+
+head(data2)
+```
+
+After that, we can easily create the bar chart race animation with *gganimate*. In this case, we will include the functions *enter_fade* and *exit_fade*, which will create a fade off effect when the countries appear or disappear. Besides, we will use the function *ease_aes* to create a non-linear animation that looks better:
+
+```{r}
+my_animation <- data2 %>%
+  ggplot() +
+  geom_col(aes(ranking, gdpPercap, fill = country)) +
+  geom_text(aes(ranking, gdpPercap, label = gdpPercap), hjust=-0.1) +
+  geom_text(aes(ranking, y=0 , label = country), hjust=1.1) + 
+  geom_text(aes(x=15, y=max(gdpPercap) , label = as.factor(year)), vjust = 0.2, alpha = 0.5,  col = "gray", size = 20) +
+  coord_flip(clip = "off", expand = FALSE) + scale_x_reverse() +
+  theme_minimal() + theme(
+    panel.grid = element_blank(), 
+    legend.position = "none",
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    plot.margin = margin(1, 4, 1, 3, "cm")
+  ) +
+  transition_states(year, state_length = 0, transition_length = 2) +
+  enter_fade() +
+  exit_fade() + 
+  ease_aes('quadratic-in-out') 
+
+animate(my_animation, width = 700, height = 432, fps = 25, duration = 15, rewind = FALSE)
+```
+
+## Animation with maps: 75 years of measles incidence
+
+```{r}
+library(tidyverse)
+library(gganimate)
+library(ggplot2)
+library(grid)
+library(sf)
+library(usmap)
+library(scales)
+library(Hmisc)
+```
+
+```{r}
+diseases<-read.csv(file="https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-12-10/diseases.csv")
+diseases %>%dim()
+diseases %>% colnames()
+head(diseases)
+```
+
+```{r}
+diseases %>% summary()
+unique (diseases$disease)
+diseases %>% select("count") %>% by(diseases$disease,sum)
+```
+
+I summarized the cases of each disease by counts to get an idea of which one had the most cases in all of US over the span of the 76 years in the dataset. As anticipated, measles had the greatest number, with 18,670,996 cases in the United States from 1928 to 2003.
+
+To compare the number of cases between states, I mutated the dataset to add an incidence rate that takes into account the case count over state population by 100,000 people for each state per year.
+
+```{r}
+diseases<- diseases %>%
+mutate(incidence=(count/population*100000*(ifelse(weeks_reporting==0,0,52/weeks_reporting))))
+```
+
+Because measles had the most cases of all diseases in the dataset, I decided to filter the dataset and explore measles for my visualization
+
+```{r}
+diseases %>% filter(disease=="Measles") %>% summary()
+
+measles<-diseases %>% filter(disease=="Measles") 
+measles<-measles %>% mutate (incidence_rounded = round(incidence, digits=1))
+```
+
+The *usmaps* package has a *fips()* function that outputs the FIPs code for a state name string input. To have the state level data plotted onto the map, a FIPs column corresponding to each state needs to be created.
+
+```{r}
+measles$fips<-fips(measles$state)
+```
+
+There is another important piece of information to account for in the visualization to make sense of the changes in trends: vaccine introduction. The measles vaccine was introduced in 1963 in the United States with a second dose recomended by 1989. To show this on the map, I created a factor variable corresponding each year to three phases of vaccine availability: the time frame when there was no vaccine, the time frame when the vaccine was introduced and the years onwards when the second dose was reccomended. This column will be used as a the subtitle on the map to demonstrate the trends relative to vaccine availability over the course of the years.
+
+```{r}
+measles$vaccine<-ifelse((measles$year>=1963) & (measles$year<1989),2,
+                 ifelse((measles$year>=1989),3,
+                 ifelse((measles$year<1963), 1,1)))
+measles$vaccine<-recode(measles$vaccine, '1'="",
+                                     '2'="Vaccine introduced",
+                                     '3'="Second dose recommended")
+```
+
+```{r}
+measles %>% select(incidence) %>% summary()
+```
+
+If you take a look at the summary stats for the incidence in the measles data, you can see how variability between the rates would unevenly polarize rates above and below the third quartile, which would obscure interpretation of the rates on a gradient scale. Instead of using the default scale in *scale_color_gradient()* in the *ggplot2* package which creates breaks by evenly spacing the intervals, quartiles are a better quantification of breaks in the dataset. A breaks vector is created to be read into the *breaks* argument of the *scale_color_gradient()* function in the plot.
+
+```{r}
+breaks<- quantile(measles$incidence_rounded, probs=seq(0,1,.25), na.rm=TRUE) %>% unname() %>% round(digits=1)
+```
+
+Now build the vector for a manual gradient color scheme and the resolution for the plot .gif file.
+
+```{r}
+#Color palette
+gradient<-c("#B1C055","#6CC682","#39C2B6","#6BB4D7","#B69DD1","#E685A8","#ED7F72")
+
+#Set these image quality options 
+options(gganimate.dev_args = list(width = 6, height = 4, units = 'in', res=300))
+```
+
+And now.. create the plot!
+
+```{r}
+library(transformr)
+#Create the plot
+measles_plot<-plot_usmap(data=measles, color="#262626", size=.3, values="incidence_rounded")+
+theme_void()+
+scale_fill_gradientn(colors = gradient, trans="pseudo_log", 
+#The pseudo_log allows for log transformation even though 0 is in the dataset
+na.value="grey",limits=c(min(breaks), max(breaks)),breaks=breaks[c(1,3:5)], labels=breaks[c(1,3:5)])+
+#only including min, 50th, 75th and max values  
+guides(fill = guide_colorbar(title="",
+                               frame.colour = "black",
+                               label.position="top",
+                               barwidth = 8,
+                               barheight = 1, 
+                               ticks=FALSE,
+                               keywidth=15,
+                               label.hjust = 0.5,
+                               label.vjust = 0.3,
+                    label.theme = element_text(angle = 45, size=10)))+
+  labs(title = "Measles Incidence per 100,000 in {frame_time}",
+       subtitle="{unique(measles$vaccine[measles$year==(frame_time)])}")+ 
+       #Allows for vaccine column to display as a subtitle relative to plot animation
+  theme(legend.position="bottom", legend.justification=c(.8,0),
+        plot.title=element_text(face="bold", size=14, color="#262626",hjust=.5),
+        plot.subtitle=element_text(hjust=.5))+
+   transition_time(year)
+
+animate(measles_plot, nframes=76, fps=1)
+```

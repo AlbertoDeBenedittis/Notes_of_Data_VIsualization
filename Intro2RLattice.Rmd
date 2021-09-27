@@ -1,0 +1,662 @@
+---
+title: 'R Lattice: quick (and partial) summary'
+author: "Giuseppe Jurman"
+date: "March, 15th 2021"
+output:
+  html_notebook:
+    number_sections: yes
+  pdf_document: default
+---
+
+(Partly abridged from [AN INTRODUCTION TO R](https://www.isid.ac.in/~deepayan/R-tutorials/labs/04_lattice_lab.pdf) by D. Sarkar and [R Graphics](https://www.stat.auckland.ac.nz/~paul/RG3e/chapter4.html) by P. Murrell)
+
+# Introduction
+*lattice* is an add-on package that implements Trellis graphics (originally developed for S and S-PLUS) in R.
+It is a powerful and elegant high-level data visualization system, with an emphasis on multivariate data,
+that is sufficient for typical graphics needs, and is also flexible enough to handle most nonstandard
+requirements. This tutorial covers the basics of lattice and gives pointers to further resources.
+```{r}
+library(lattice)
+```
+
+## Examples
+To fix ideas, we start with a few simple examples. We use the *Chem97* dataset from the *mlmRev* package (install it first)
+```{r}
+#install.packages(mlmRev)
+require(mlmRev)
+data(Chem97, package = "mlmRev")
+print(dim(Chem97))
+head(Chem97)
+```
+
+The dataset records information on students appearing in the 1997 A-level chemistry examination in Britain. We are only interested in the following variables:
+
+* *score*: point score in the A-level exam, with six possible values (0, 2, 4, 6, 8, 10).
+* *gcsescore*: average score in GCSE exams. This is a continuous score that may be used as a predictor of the A-level score.
+* *gender*: gender of the student
+
+Using *lattice*, we can draw a histogram of all the *gcsescore* values using
+
+```{r}
+histogram(~ gcsescore, data = Chem97)
+```
+
+This plot shows a reasonably symmetric unimodal distribution, but is otherwise uninteresting. 
+A more interesting display would be one where the distribution of *gcsescore* is compared across different subgroups, say those defined by the A-level exam *score.* 
+
+This can be done using
+
+```{r}
+histogram(~ gcsescore | factor(score), data = Chem97)
+
+```
+
+More effective comparison is enabled by direct superposition. 
+This is hard to do with conventional histograms, but easier using kernel density estimates. In the following example, we use the same subgroups as before in the different panels, but additionally subdivide the gcsescore values by gender within each panel.
+
+```{r}
+densityplot(~ gcsescore | factor(score), Chem97, groups = gender, plot.points = FALSE, auto.key = TRUE)
+# key is a synonimum for legend -> it creates automatically a legend
+# where it thinks is more appropriate. 
+```
+
+What happens if the extra arguments *plot.points* and *auto.key* are omitted? 
+all the points used for the density appear 
+
+```{r}
+densityplot(~ gcsescore | factor(score), Chem97, groups = gender)
+```
+
+The *plot.points* argument is described in the *panel.densityplot* help page, and *auto.key* in *xyplot* help page.
+
+What happens if the inline call to *factor()* is omitted?
+the values of socre are now considered as numbers
+```{r}
+densityplot(~ gcsescore | score, Chem97, groups = gender, plot.points = FALSE, auto.key = TRUE)
+```
+
+Without the call to *factor()*, *score* is considered to be a numeric variable, and converted into a *shingle*: see *shingle* help page. The only think that change is a mark that represent the value we are looking at. WARNING: In same cases could create a completely different outcome.  
+
+# Basics
+
+*lattice* provides a high-level system for statistical graphics that is independent of traditional R graphics.
+
+* It is modeled on the Trellis suite in S-PLUS, and implements most of its features. In fact, *lattice* can be considered an implementation of the general principles of Trellis graphics.
+* It uses the *grid* package as the underlying implementation engine, and thus inherits many of its features by default.
+* Trellis displays are defined by the **type** of graphic and the **role** different variables play in it. 
+Each display type is associated with a corresponding high-level function (*histogram*, *densityplot*, etc.). Possible roles depend on the type of display, but typical ones are
+
+* *primary variables*: those that define the primary display (e.g., *gcsescore* in the previous examples).
+* *conditioning variables*: divides data into subgroups, each of which are presented in a different panel
+(e.g., *score* in the last two examples).
+* *grouping variables*: subgroups are contrasted within panels by superposing the corresponding displays (e.g., *gender* in the last example).
+
+The following display types are available in *lattice*:
+
+**Function**        | *Display*                                       |
+--------------------|-------------------------------------------------|
+*histogram()*       |Histogram                                        |
+*densityplot()*     |Kernel Density Plot                              |
+*qqmath()*          |Theoretical Quantile Plot                        |
+*qq()*              |Two-sample Quantile Plot                         |
+*stripplot()*       |Stripchart (Comparative 1-D Scatterplots)        |
+*bwplot()*          |Comparative Box-and-Whisker Plots                |
+*dotplot()*         |Cleveland Dot Plot                               |
+*barchart()*        |Bar Plot                                         |
+*xyplot()*          |Scatterplot                                      |
+*splom()*           |Scatterplot Matrix                               |
+*contourplot()*     |Contour Plot of Surfaces                         |
+*levelplot()*       |False Color Level Plot of Surfaces               |
+*wireframe()*       |3D Perspective Plot of Surfaces                  |
+*cloud()*           |3D Scatterplot                                   |
+*parallel()*        |Parallel Coordinates Plot                        |
+
+New high-level functions can be written to represent further visualization types; examples are *ecdfplot()* and *mapplot()* in the *latticeExtra* package.
+
+## Design goals
+
+One of the primary goals of Trellis graphics is to provide tools that make it easy to apply visualization rules, so that the burden of compliance is shifted from the user to the software to the extent possible. Some obvious examples of such rules are:
+
+* Use as much of the available space as possible
+* Force direct comparison by superposition (grouping) when possible
+* Encourage comparison when juxtaposing (conditioning): use common axes, add common reference objects such as grids.
+
+These design goals have some technical drawbacks; for example, non-wastage of space requires the complete display to be known when plotting begins, so, the incremental approach common in traditional R graphics (e.g., adding a main title after the main plot is finished) doesn’t fit in. 
+
+*lattice* deals with this using an object-based paradigm: plots are represented as regular R objects, incremental updates are performed by modifying such objects and re-plotting them.
+Although rules are useful, any serious graphics system must also be flexible. 
+
+*lattice* is designed to be flexible, but obviously there is a trade-off between flexibility and ease of use for the more common tasks. lattice tries to achieve a balance using the following model:
+
+* A display is made up of various elements
+* The defaults are coordinated to provide meaningful results, but
+* Each element can be controlled by the user independently of the others 
+* The main elements are:
+    + the primary (panel) display
+    + axis annotation
+    + strip annotation (describing the conditioning process)
+    + legends (typically describing the grouping process)
+
+In each case, additional arguments to the high-level calls can be used to activate common variants, and full flexibility is allowed through arbitrary user-defined functions. This is particularly useful for controlling the primary display through panel functions.
+Most nontrivial use of lattice involves manipulation of one or more of these elements. Not all graphical designs segregate neatly into these elements; lattice may not be a good tool for such displays.
+
+## Common high-level function
+
+### Visualizing univariate distributions
+Several standard statistical graphics are intended to visualize the distribution of a continuous random variable. 
+We have already seen histograms and density plots, which are both estimates of the probability density function. 
+Another useful display is the normal Q-Q plot, which is related to the distribution function $F(x) = P(X\leq x)$. 
+Normal Q-Q plots can be produced by the lattice function *qqmath()*.
+
+```{r, fig.width=10, fig.height=10}
+qqmath(~ gcsescore | factor(score), Chem97, groups = gender, f.value = ppoints(100), auto.key = list(columns = 2), aspect = "xy",type=c("p","g"))
+```
+
+Normal Q-Q plots plot empirical quantiles of the data against quantiles of the normal distribution (or some other theoretical distribution). They can be regarded as an estimate of the distribution function F, with the probability axis transformed by the normal quantile function. They are designed to detect departures from normality; for a good fit, the points lie approximate along a straight line. In the plot above, the systematic convexity suggests that the distributions are left-skewed, and the change in slopes suggests changing variance.
+
+The *type* argument adds a common reference grid to each panel that makes it easier to see the upward shift in gcsescore across panels. 
+The *aspect* argument automatically computes an aspect ratio. 
+
+Two-sample Q-Q plots compare quantiles of two samples (rather than one sample and a theoretical distribution). They can be produced by the lattice function *qq()*, with a formula that has two primary variables. In the formula *y ~ x*, y needs to be a factor with two levels, and the samples compared are the subsets of x for the two levels of y. For example, we can compare the distributions of *gcsescore* for males and females, conditioning on A-level *score*, with
+
+```{r, fig.width=8, fig.height=8}
+qq(gender ~ gcsescore | factor(score), Chem97, f.value = ppoints(100), type = c("p", "g"), aspect = 1)
+```
+
+The plot suggests that females do better than males in the GCSE exam for a given A-level score (in other words, males tend to improve more from the GCSE exam to the A-level exam), and also have smaller variance (except in the first panel).
+
+Two-sample Q-Q plots only allow comparison between two samples at a time. A well-known graphical design that allows comparison between an arbitrary number of samples is the comparative box-and-whisker plot. They are related to the Q-Q plot: the values compared are five “special” quantiles, the median, the first and third quartiles, and the extremes. More commonly, the extents of the “whiskers” are defined differently, and values outside plotted explicitly, so that heavier-than-normal tails tend to produce many points outside the extremes. See *boxplot.stats* help for details.
+
+Box-and-whisker plots can be produced by the lattice function *bwplot()*.
+
+```{r, fig.width=8}
+bwplot(factor(score) ~ gcsescore | gender, Chem97)
+```
+
+The decreasing lengths of the boxes and whiskers suggest decreasing variance, and the large number of outliers on one side indicate heavier left tails (characteristic of a left-skewed distribution).
+
+The same box-and-whisker plots can be displayed in a slightly different layout to emphasize a more subtle effect in the data: for example, the median *gcsescore* does not uniformly increase from left to right in the following plot, as one might have expected.
+
+```{r}
+bwplot(gcsescore ~ gender | factor(score), Chem97, layout = c(6, 1))
+```
+
+The layout argument controls the layout of panels in columns, rows, and pages (the default would not have been as useful in this example). Note that the box-and-whisker plots are now vertical, because of a switch in the order of variables in the formula.
+
+All the plots we have seen suggest that the distribution of *gcsescore* is slightly skewed, and have unequal variances in the subgroups of interest. Using a Box–Cox transformation often helps in such situations. The *boxcox()* function in the MASS package can be used to find the “optimal” Box–Cox transformation, which in this case is approximate 2.34. Reproduce the previous plots replacing *gcsescore* by *gcsescore^2.34*.
+
+Box-and-whisker plots, and to a lesser extent Q-Q plots, are mostly useful when the distributions are symmetric and unimodal, and can be misleading otherwise. For example, consider the display produced by
+```{r}
+data(gvhd10, package = "latticeExtra")
+print(gvhd10)
+bwplot(Days ~ log(FSC.H), data = gvhd10)
+```
+
+What would you conclude about the distribution of *log(FSC.H)* from this plot? Now draw kernel density plots of *log(FSC.H)* conditioning on Days. Would you reach the same conclusions as before?
+
+
+For small samples, summarizing is often unnecessary, and simply plotting all the data reveals interesting features of the distribution. The following example, which uses the *quakes* dataset, plots depths of earthquake epicenters by magnitude.
+
+```{r}
+stripplot(depth ~ factor(mag), data = quakes, main = "Depth of earthquake epicenters by magnitude", xlab = "Magnitude (Richter)", ylab = "Depth (km)")
+```
+
+This is known as a strip plot or a one-dimensional scatterplot. Note the use of jittering and partial transparency to alleviate potential overplotting. The arguments *xlab*, *ylab*, and *main* have been used to add informative labels; this is possible in all high-level *lattice* functions.
+
+### Visualizing tabular data
+Tables form an important class of statistical data. Popular visualization methods designed for tables are bar charts and Cleveland dot plots.
+Pie charts are also popular, but they have serious design flaws and should not be used. *lattice* does not have a high-level function that produces pie charts.
+For illustration, we use the *VADeaths* dataset, which gives death rates in the U.S. state of Virginia in 1941 among different population subgroups. *VADeaths* is a matrix.
+```{r}
+VADeaths
+```
+
+To use the *lattice* formula interface, we first need to convert it into a data frame.
+
+```{r}
+VADeathsDF <- as.data.frame.table(VADeaths, responseName = "Rate")
+VADeathsDF
+```
+
+Bar charts are produced by the *barchart()* function, and Cleveland dot plots by *dotplot()*. 
+Both allow a formula of the form *y ~ x* (plus additional conditioning and grouping variables), where one of x and y should be a factor.
+
+A bar chart of the *VADeathsDF* data is produced by
+```{r}
+barchart(Var1 ~ Rate | Var2, VADeathsDF, layout = c(4, 1))
+```
+
+This plot is potentially misleading, because a strong visual effect in the plot is the comparison of the areas of the shaded bars, which do not mean anything. This problem can be addressed by making the areas proportional to the values they encode.
+
+```{r}
+barchart(Var1 ~ Rate | Var2, VADeathsDF, layout = c(4, 1), origin = 0)
+```
+
+A better design is to altogether forego the bars, which distract from the primary comparison of the endpoint positions, and instead use a dot plot.
+
+```{r,fig.height=10}
+dotplot(Var1 ~ Rate | Var2, VADeathsDF, layout = c(1, 4),cex=4)
+```
+
+In this particular example, the display is more effective if we use *Var2* as a grouping variable, and join the points within each group.
+
+```{r}
+dotplot(Var1 ~ Rate, data = VADeathsDF, groups = Var2, type = "o", auto.key = list())
+```
+
+This plot clearly shows that the pattern of death rate by age is virtually identical for urban and rural females, with an increased rate for rural males, and a further increase for urban males. This interaction is difficult to see in the earlier plots.
+
+### Generic functions and methods
+High-level lattice functions are actually generic functions, with specific methods doing the actual work. All the examples we have seen so far use the *formula* methods; that is, the method called when the first argument is a formula. Because *barchart()* and *dotplot()* are frequently used for multiway tables stored as arrays, lattice also includes suitable methods that bypass the conversion to a data frame that would be required otherwise. 
+
+For example, an alternative to the last example is
+```{r}
+dotplot(VADeaths, type = "o", auto.key = list(points = TRUE, lines = TRUE, space = "right"))
+```
+
+Methods available for a particular generic can be listed using
+```{r}
+methods(generic.function = "dotplot")
+```
+
+The special features of the methods, if any, are described in their respective help pages.
+
+### Scatterplots and extensions
+Scatterplots are commonly used for continuous bivariate data, as well as for time-series data. We use the *Earthquake* data, which contains measurements recorded at various seismometer locations for 23 large earthquakes in western North America between 1940 and 1980. Our first example plots the maximum horizontal acceleration measured against distance of the measuring station from the epicenter.
+
+```{r}
+data(Earthquake, package = "nlme")
+
+print(dim(Earthquake))
+xyplot(accel ~ distance, data = Earthquake)
+```
+
+The plot shows patterns typical of a right skewed distribution, and can be improved by plotting the data on a log scale. 
+
+It is common to add a reference grid and some sort of smooth; for example,
+
+```{r}
+xyplot(accel ~ distance, data = Earthquake, scales = list(log = TRUE),
+         type = c("p", "g", "smooth"), xlab = "Distance From Epicenter (km)",
+         ylab = "Maximum Horizontal Acceleration (g)")
+```
+
+### Shingles
+Conditioning by factors is possible with scatterplots as usual. It is also possible to condition on *shingles*, which are continuous analogues of factors, with levels defined by possibly overlapping intervals. Using the *quakes* dataset again, we can try to understand the three-dimensional distribution of earthquake epicenters by looking at a series of two-dimensional scatterplots.
+
+```{r}
+Depth <- equal.count(quakes$depth, number=8, overlap=.1)
+summary(Depth)
+```
+
+```{r}
+xyplot(lat ~ long | Depth, data = quakes)
+```
+
+### Trivariate displays
+Of course, for continuous trivariate data, it may be more effective to use a three-dimensional scatterplot.
+
+```{r}
+cloud(depth ~ lat * long, data = quakes,
+        zlim = rev(range(quakes$depth)),
+        screen = list(z = 105, x = -70), panel.aspect = 0.75,
+        xlab = "Longitude", ylab = "Latitude", zlab = "Depth")
+```
+
+Static three-dimensional scatterplots are not very useful because of the strong effect of “camera” direction. 
+Viewing direction in the previous plot can be changed by modifying the *screen* argument.
+**Unfortunately, lattice does not allow interactive manipulation of the viewing direction**. Still, looking at a few such plots suggests that the epicenter locations are concentrated around two planes in three-dimensional space.
+
+Other trivariate functions are *wireframe()* and *levelplot()*, which display data in the form of a three-dimensional surface.
+
+### The “trellis” object.
+One important feature of lattice that makes it different from traditional R graphics is that **high-level functions do not actually plot anything**. 
+Instead, they return an object of class *“trellis”*, that needs to be *print()*-ed or *plot()*-ed. 
+R’s automatic printing rule means that in most cases, the user does not see any difference in behaviour. 
+Here is one example where we use optional arguments of the *plot()* method for *“trellis”* objects to display two plots side by side.
+
+```{r}
+head(USPersonalExpenditure)
+
+dp.uspe <-
+      dotplot(t(USPersonalExpenditure), groups = FALSE, layout = c(1, 5),
+              xlab = "Expenditure (billion dollars)")
+dp.uspe.log <-
+      dotplot(t(USPersonalExpenditure), groups = FALSE, layout = c(1, 5),
+              scales = list(x = list(log = 2)),
+              xlab = "Expenditure (billion dollars)")
+
+plot(dp.uspe,     split = c(1, 1, 2, 1))
+plot(dp.uspe.log, split = c(2, 1, 2, 1), newpage = FALSE)
+
+```
+
+# Example
+
+Italy is importing an item A from 5 other countries (US, UK, Russia, China, Brazil).
+In the last 300 months Jan 1994 - December 2018, the imported quantities were
+
+```{r}
+set.seed(42)
+from_us <- rnorm(300,500,50)
+from_uk <- rnorm(300,200,20)
+from_ru <- rnorm(300,1000,75)
+from_cn <- rnorm(300,800,10)
+from_br <- rnorm(300,300,40)
+```
+
+The import price has changed throughout the years as follow
+
+```{r}
+set.seed(42)
+price_from_us <- seq(from=1.1,to=2.5,length.out = 300)
+price_from_uk <- seq(from=1.5,to=2.0,length.out = 300)
+price_from_ru <- seq(from=0.7,to=2.0,length.out = 300)
+price_from_cn <- seq(from=0.2,to=4.0,length.out = 300)
+price_from_br <- seq(from=0.5,to=1.2,length.out = 300)
+```
+
+Suppose now I want to plot the trend of the quantity and the total cost (on different panels) along the year, marking the months with extreme import and total cost, and the distribution (boxplots) of both quantities grouped by providing country.
+
+First we need to build up a convenient dataframe, using *country* as a factor:
+```{r}
+imports <- data.frame(
+  month=format(seq(as.Date("1994/01/01"), by = "month", length.out = 300),"%m %Y"),
+  quantity=c(from_us,from_uk,from_ru,from_cn,from_br),
+  price=c(price_from_us,price_from_uk,price_from_ru,price_from_cn,price_from_br),
+  country=as.factor(c(rep("us",300),rep("uk",300),rep("ru",300),rep("cn",300),rep("br",300)))
+  )
+```
+
+and adding the *total_cost* column:
+```{r}
+imports$total_cost <- imports$quantity*imports$price
+```
+
+so we have the following structure:
+```{r}
+head(imports)
+```
+
+
+```{r}
+attach(imports)
+print(range(quantity))
+```
+
+```{r}
+library(lattice)
+xyplot(c(0,1300)~c(1,300))
+```
+
+
+First adjust axes and title:
+```{r}
+convert_dates <- function(month)
+  return(format(as.Date(paste("01",month,sep=" "),format="%d %m %Y"), "%b %y"))
+
+xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       )
+       )
+```
+
+Now start plotting the data:
+
+```{r, fig.height=10, fig.width=10}
+
+mycols <- c("red","blue","black","orange","yellow")
+names(mycols) <- unique(country)
+
+xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       ),
+       panel=function(...){
+         for(cnt in unique(country))
+           lpoints(1:300,quantity[country==cnt],type="p",pch=19,col=mycols[cnt])
+         
+       }
+       )
+```
+
+
+Would it be better with lines instead?
+
+```{r, fig.height=10, fig.width=10}
+
+
+
+xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       ),
+       panel=function(...){
+         for(cnt in unique(country))
+           lpoints(1:300,quantity[country==cnt],type="l",lwd=3,col=mycols[cnt])
+         
+       }
+       )
+```
+
+We miss the legend now
+
+```{r, fig.height=10, fig.width=10}
+library(Hmisc)
+
+xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       ),
+       key=list(x=0.1,y=0.1,
+                      lines=list(lwd=4,col=mycols[unique(country)]),
+                      text=list(label=capitalize(as.character(unique(country))),cex=1.75),
+                      padding.text=4,
+                      border=TRUE,
+                      columns=5),
+       panel=function(...){
+         for(cnt in unique(country))
+           lpoints(1:300,quantity[country==cnt],type="l",lwd=3,col=mycols[cnt])
+         
+       }
+       )
+```
+
+
+Now find month with maximal import, using the *sqldf* package to interact with the dataframe as a database
+
+```{r}
+require(sqldf)
+
+summarised <- sqldf("select month,sum(quantity) as total_quantity from imports group by month")
+mx=which(summarised$total_quantity==max(summarised$total_quantity),arr.ind = TRUE)
+print(mx)
+```
+
+```{r,fig.height=10, fig.width=10}
+xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       ),
+       key=list(x=0.1,y=0.1,
+                      lines=list(lwd=4,col=mycols[unique(country)]),
+                      text=list(label=capitalize(as.character(unique(country))),cex=1.75),
+                      padding.text=4,
+                      border=TRUE,
+                      columns=3),
+       panel=function(...){
+         for(cnt in unique(country))
+           lpoints(1:300,quantity[country==cnt],type="l",lwd=3,col=mycols[cnt])
+       lsegments(x0=mx,y0=100,x1=mx,y1=1250,col="green",lwd=3)
+       ltext(mx,1280,col="green",label=paste("Max import on",convert_dates(month[mx]),sep=" "),cex=1.4)
+       }
+       )
+```
+
+Open to further refinements...
+
+Let's move on to the boxplot now: first, very basic:
+
+```{r, fig.width=10, fig.height=10}
+bwplot(quantity~country)
+```
+
+Let's start polishing it
+
+```{r, fig.width=10, fig.height=10}
+bwplot(quantity~country,par.settings = list(box.umbrella = list(lty = 1)),
+       main=list(label="Import distribution", cex=1.5),
+       xlab=list(label="Country",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         y=list(at=seq(0,1300,by=250),cex=1.3),
+         x=list(label=capitalize(as.character(sort(unique(country)))),cex=1.3)
+       ),
+       panel=function(...){
+         panel.bwplot(notch=FALSE,...)
+         for(i in 1:5)
+           panel.points(x=jitter(rep(i,300),amount=.5),imports[imports$country==sort(unique(country))[i],"quantity"],col=mycols[sort(unique(country))[i]], pch=19,alpha=0.5)
+       }
+       )
+```
+
+
+
+Let's put all together...
+
+```{r, fig.width=12, fig.height=20}
+g1 <- xyplot(c(0,1300)~c(1,300),
+       main=list(label="Import volume", cex=1.5),
+       xlab=list(label="Date",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         x=list(at=c(1,seq(50,300,by=50)),label=convert_dates(month[c(1,seq(50,300,by=50))]),rot=45,cex=1.2),
+         y=list(at=seq(0,1300,by=250),cex=1.2)
+       ),
+       key=list(x=0.1,y=0.1,
+                      lines=list(lwd=4,col=mycols[unique(country)]),
+                      text=list(label=capitalize(as.character(unique(country))),cex=1.75),
+                      padding.text=4,
+                      border=TRUE,
+                      columns=3),
+       panel=function(...){
+         for(cnt in unique(country))
+           lpoints(1:300,quantity[country==cnt],type="l",lwd=3,col=mycols[cnt])
+       lsegments(x0=mx,y0=100,x1=mx,y1=1250,col="green",lwd=3)
+       ltext(mx,1280,col="green",label=paste("Max import on",convert_dates(month[mx]),sep=" "),cex=1.4)
+       }
+       )
+
+g2<-bwplot(quantity~country,par.settings = list(box.umbrella = list(lty = 1)),
+       main=list(label="Import distribution", cex=1.5),
+       xlab=list(label="Country",cex=1.4),
+       ylab=list(label="Quantity (tons)",cex=1.4),
+       scales=list(
+         y=list(at=seq(0,1300,by=250),cex=1.3),
+         x=list(label=capitalize(as.character(sort(unique(country)))),cex=1.3)
+       ),
+       panel=function(...){
+         panel.bwplot(notch=TRUE,...)
+         for(i in 1:5)
+           panel.points(x=jitter(rep(i,300),amount=.5),imports[imports$country==sort(unique(country))[i],"quantity"],col=mycols[sort(unique(country))[i]], pch=19,alpha=0.5)
+       }
+       )
+
+library(gridExtra)
+grid.arrange(g1,g2, ncol=1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
